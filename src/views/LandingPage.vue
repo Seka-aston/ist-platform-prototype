@@ -121,8 +121,9 @@ function enterRole(route: string) {
 }
 
 .product-name {
+  font-family: var(--font-editorial);
   font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: 400;
   color: var(--cui-text-header-body);
   line-height: 1.1;
   text-align: left;

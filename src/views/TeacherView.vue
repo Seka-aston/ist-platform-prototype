@@ -325,6 +325,7 @@ function threadMessages(threadId: string) {
 <style scoped>
 .teacher-view {
   max-width: 1100px;
+  margin: 0 auto;
 }
 
 .page-title-row {
@@ -335,8 +336,9 @@ function threadMessages(threadId: string) {
 }
 
 .page-title {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
+  font-family: var(--font-editorial);
+  font-size: var(--font-size-3xl);
+  font-weight: 400;
   color: var(--cui-text-header-body);
   margin: 0;
 }
