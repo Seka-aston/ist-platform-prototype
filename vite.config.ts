@@ -5,6 +5,9 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   resolve: {
-    dedupe: ['vue'],
+    dedupe: ['vue', 'chart.js'],
+  },
+  optimizeDeps: {
+    include: ['chart.js', 'vue-chartjs > chart.js'],
   },
 })

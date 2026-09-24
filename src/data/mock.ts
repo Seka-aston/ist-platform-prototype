@@ -1,3 +1,5 @@
+import { reactive } from "vue";
+
 export interface Department {
   id: string;
   name: string;
@@ -53,6 +55,18 @@ export interface Message {
   relatedTo?: string;
 }
 
+export interface Lesson {
+  id: string;
+  className: string;
+  teacherId: string;
+  subject: string;
+  /** 0 = Monday … 4 = Friday. Lessons recur every school week; only
+   *  absence coverage differs week to week (computed from real dates). */
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
 export interface SubstituteOption {
   id: string;
   name: string;
@@ -103,7 +117,7 @@ export const students: Student[] = [
 ];
 
 // --- Absence Requests ---
-export const absenceRequests: AbsenceRequest[] = [
+export const absenceRequests: AbsenceRequest[] = reactive([
   {
     id: "ar1", type: "student", requesterId: "st1", requesterName: "Alma Wikström",
     reason: "Family trip abroad", startDate: "2026-09-15", endDate: "2026-09-19",
@@ -142,10 +156,10 @@ export const absenceRequests: AbsenceRequest[] = [
     reason: "Sports competition", startDate: "2026-09-11", endDate: "2026-09-11",
     status: "denied", createdAt: "2026-09-06T11:00:00", className: "8B", department: "Mathematics",
   },
-];
+]);
 
 // --- Messages ---
-export const messages: Message[] = [
+export const messages: Message[] = reactive([
   {
     id: "m1", threadId: "ar1", senderId: "st1", senderName: "Alma Wikström", senderRole: "student",
     content: "Hi, I need to request time off next week. My family is travelling to visit my grandmother in Germany.",
@@ -201,7 +215,7 @@ export const messages: Message[] = [
     content: "No problem, Ella. Make sure you catch up on the equations we cover in the morning session.",
     timestamp: "2026-09-07T15:05:00",
   },
-];
+]);
 
 // --- Substitute options for unassigned gaps ---
 export const substituteOptions: SubstituteOption[] = [
@@ -209,6 +223,64 @@ export const substituteOptions: SubstituteOption[] = [
   { id: "s2", name: "Daniel Forsberg", subjects: ["Mathematics", "Physics"], availableHours: "09:00–15:00", rating: 4.5, avatar: "/avatars/avatar-8.svg" },
   { id: "s3", name: "Lisa Wallin", subjects: ["Biology", "Chemistry"], availableHours: "08:00–14:00", rating: 4.9, avatar: "/avatars/avatar-4.svg" },
   { id: "s4", name: "Marcus Ek", subjects: ["Physical Education", "Health"], availableHours: "08:00–16:00", rating: 4.6, avatar: "/avatars/avatar-5.svg" },
+];
+
+// --- Weekly lesson timetable (Mon–Fri, current school week) ---
+// Three representative classes, one per grade (7/8/9), each with a mixed
+// weekly timetable drawn from real staff subjects. Anna Lindqvist's (t1)
+// lessons in 8A on Sep 15–17 intentionally overlap her own absence
+// request (ar5) so the Schedule can demonstrate an uncovered gap live.
+export const lessons: Lesson[] = [
+  // --- 7A ---
+  { id: "l1", className: "7A", teacherId: "t2", subject: "Mathematics", dayOfWeek: 0, startTime: "09:30", endTime: "10:10" },
+  { id: "l2", className: "7A", teacherId: "t1", subject: "Swedish", dayOfWeek: 0, startTime: "10:20", endTime: "11:00" },
+  { id: "l3", className: "7A", teacherId: "t8", subject: "Physical Education", dayOfWeek: 0, startTime: "13:00", endTime: "13:40" },
+  { id: "l4", className: "7A", teacherId: "t1", subject: "English", dayOfWeek: 1, startTime: "09:30", endTime: "10:10" },
+  { id: "l5", className: "7A", teacherId: "t7", subject: "Music", dayOfWeek: 1, startTime: "11:10", endTime: "11:50" },
+  { id: "l6", className: "7A", teacherId: "t3", subject: "Biology", dayOfWeek: 1, startTime: "13:50", endTime: "14:30" },
+  { id: "l7", className: "7A", teacherId: "t2", subject: "Mathematics", dayOfWeek: 2, startTime: "10:20", endTime: "11:00" },
+  { id: "l8", className: "7A", teacherId: "t4", subject: "History", dayOfWeek: 2, startTime: "11:10", endTime: "11:50" },
+  { id: "l9", className: "7A", teacherId: "t7", subject: "Drama", dayOfWeek: 2, startTime: "13:50", endTime: "14:30" },
+  { id: "l10", className: "7A", teacherId: "t6", subject: "Physics", dayOfWeek: 3, startTime: "09:30", endTime: "10:10" },
+  { id: "l11", className: "7A", teacherId: "t5", subject: "French", dayOfWeek: 3, startTime: "13:00", endTime: "13:40" },
+  { id: "l12", className: "7A", teacherId: "t8", subject: "Physical Education", dayOfWeek: 3, startTime: "13:50", endTime: "14:30" },
+  { id: "l13", className: "7A", teacherId: "t1", subject: "Swedish", dayOfWeek: 4, startTime: "10:20", endTime: "11:00" },
+  { id: "l14", className: "7A", teacherId: "t10", subject: "Geography", dayOfWeek: 4, startTime: "11:10", endTime: "11:50" },
+  { id: "l15", className: "7A", teacherId: "t7", subject: "Music", dayOfWeek: 4, startTime: "13:00", endTime: "13:40" },
+
+  // --- 8A ---
+  { id: "l16", className: "8A", teacherId: "t1", subject: "English", dayOfWeek: 0, startTime: "09:30", endTime: "10:10" },
+  { id: "l17", className: "8A", teacherId: "t9", subject: "Mathematics", dayOfWeek: 0, startTime: "10:20", endTime: "11:00" },
+  { id: "l18", className: "8A", teacherId: "t8", subject: "Physical Education", dayOfWeek: 0, startTime: "13:00", endTime: "13:40" },
+  { id: "l19", className: "8A", teacherId: "t1", subject: "Swedish", dayOfWeek: 1, startTime: "09:30", endTime: "10:10" },
+  { id: "l20", className: "8A", teacherId: "t3", subject: "Chemistry", dayOfWeek: 1, startTime: "11:10", endTime: "11:50" },
+  { id: "l21", className: "8A", teacherId: "t4", subject: "History", dayOfWeek: 1, startTime: "13:50", endTime: "14:30" },
+  { id: "l22", className: "8A", teacherId: "t1", subject: "English", dayOfWeek: 2, startTime: "10:20", endTime: "11:00" },
+  { id: "l23", className: "8A", teacherId: "t9", subject: "Mathematics", dayOfWeek: 2, startTime: "11:10", endTime: "11:50" },
+  { id: "l24", className: "8A", teacherId: "t7", subject: "Music", dayOfWeek: 2, startTime: "13:50", endTime: "14:30" },
+  { id: "l25", className: "8A", teacherId: "t1", subject: "Swedish", dayOfWeek: 3, startTime: "09:30", endTime: "10:10" },
+  { id: "l26", className: "8A", teacherId: "t6", subject: "Physics", dayOfWeek: 3, startTime: "13:00", endTime: "13:40" },
+  { id: "l27", className: "8A", teacherId: "t10", subject: "Geography", dayOfWeek: 3, startTime: "13:50", endTime: "14:30" },
+  { id: "l28", className: "8A", teacherId: "t1", subject: "English", dayOfWeek: 4, startTime: "10:20", endTime: "11:00" },
+  { id: "l29", className: "8A", teacherId: "t5", subject: "French", dayOfWeek: 4, startTime: "11:10", endTime: "11:50" },
+  { id: "l30", className: "8A", teacherId: "t8", subject: "Physical Education", dayOfWeek: 4, startTime: "13:00", endTime: "13:40" },
+
+  // --- 9B ---
+  { id: "l31", className: "9B", teacherId: "t2", subject: "Mathematics", dayOfWeek: 0, startTime: "09:30", endTime: "10:10" },
+  { id: "l32", className: "9B", teacherId: "t8", subject: "Physical Education", dayOfWeek: 0, startTime: "11:10", endTime: "11:50" },
+  { id: "l33", className: "9B", teacherId: "t3", subject: "Biology", dayOfWeek: 0, startTime: "13:50", endTime: "14:30" },
+  { id: "l34", className: "9B", teacherId: "t9", subject: "Physics", dayOfWeek: 1, startTime: "10:20", endTime: "11:00" },
+  { id: "l35", className: "9B", teacherId: "t10", subject: "Geography", dayOfWeek: 1, startTime: "11:10", endTime: "11:50" },
+  { id: "l36", className: "9B", teacherId: "t4", subject: "History", dayOfWeek: 1, startTime: "13:00", endTime: "13:40" },
+  { id: "l37", className: "9B", teacherId: "t2", subject: "Mathematics", dayOfWeek: 2, startTime: "09:30", endTime: "10:10" },
+  { id: "l38", className: "9B", teacherId: "t3", subject: "Chemistry", dayOfWeek: 2, startTime: "11:10", endTime: "11:50" },
+  { id: "l39", className: "9B", teacherId: "t5", subject: "French", dayOfWeek: 2, startTime: "13:50", endTime: "14:30" },
+  { id: "l40", className: "9B", teacherId: "t6", subject: "Physics", dayOfWeek: 3, startTime: "10:20", endTime: "11:00" },
+  { id: "l41", className: "9B", teacherId: "t8", subject: "Physical Education", dayOfWeek: 3, startTime: "13:00", endTime: "13:40" },
+  { id: "l42", className: "9B", teacherId: "t7", subject: "Music", dayOfWeek: 3, startTime: "13:50", endTime: "14:30" },
+  { id: "l43", className: "9B", teacherId: "t9", subject: "Mathematics", dayOfWeek: 4, startTime: "09:30", endTime: "10:10" },
+  { id: "l44", className: "9B", teacherId: "t10", subject: "Geography", dayOfWeek: 4, startTime: "11:10", endTime: "11:50" },
+  { id: "l45", className: "9B", teacherId: "t3", subject: "Biology", dayOfWeek: 4, startTime: "13:00", endTime: "13:40" },
 ];
 
 // --- Helper: the current principal ---

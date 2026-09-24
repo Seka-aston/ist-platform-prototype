@@ -61,7 +61,7 @@ const chartOptions = computed(() => ({
     },
     tooltip: {
       backgroundColor: "#1e293b",
-      titleFont: { family: "Inter, sans-serif", size: 13, weight: "600" as const },
+      titleFont: { family: "Inter, sans-serif", size: 13, weight: 600 },
       bodyFont: { family: "Inter, sans-serif", size: 12 },
       padding: 10,
       cornerRadius: 8,
@@ -91,7 +91,7 @@ const chartOptions = computed(() => ({
       stacked: true,
       grid: { display: false },
       ticks: {
-        font: { family: "Inter, sans-serif", size: 12, weight: "500" as const },
+        font: { family: "Inter, sans-serif", size: 12, weight: 500 },
         color: "#334155",
         padding: 8,
       },
@@ -139,7 +139,7 @@ const studentOptions = computed(() => ({
     },
     tooltip: {
       backgroundColor: "#1e293b",
-      titleFont: { family: "Inter, sans-serif", size: 13, weight: "600" as const },
+      titleFont: { family: "Inter, sans-serif", size: 13, weight: 600 },
       bodyFont: { family: "Inter, sans-serif", size: 12 },
       padding: 10,
       cornerRadius: 8,
@@ -168,7 +168,7 @@ const studentOptions = computed(() => ({
       stacked: true,
       grid: { display: false },
       ticks: {
-        font: { family: "Inter, sans-serif", size: 12, weight: "500" as const },
+        font: { family: "Inter, sans-serif", size: 12, weight: 500 },
         color: "#334155",
         padding: 8,
       },

@@ -1,24 +1,25 @@
 <script setup lang="ts">
-import { Column } from "@ist/commonui-components";
+import { Column } from "@ist-group/commonui-components-vue";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import DepartmentChart from "../components/DepartmentChart.vue";
 import HeaderActions from "../components/HeaderActions.vue";
 import KpiCard from "../components/KpiCard.vue";
 import MessagingPanel from "../components/MessagingPanel.vue";
+import ScheduleCalendar from "../components/ScheduleCalendar.vue";
 import {
   departments,
   absenceRequests,
   avatarMap,
   staff,
-  students,
   substituteOptions,
   principal,
   messages,
+  lessons,
   type AbsenceRequest,
   type SubstituteOption,
 } from "../data/mock";
-import type { MenuEntry } from "@ist/commonui-components";
+import type { MenuEntry } from "@ist-group/commonui-components-vue";
 
 const router = useRouter();
 
@@ -53,7 +54,7 @@ const menuItems: MenuEntry[] = [
   },
   { id: "staffing", type: "item", label: "Staffing", icon: "groups" },
   { id: "messages", type: "item", label: "Messages", icon: "chat", badge: "3", badgeType: "pill-small" },
-  { id: "timetable", type: "item", label: "Timetable", icon: "calendar_month" },
+  { id: "schedule", type: "item", label: "Schedule", icon: "calendar_month" },
 ];
 
 function onMenuClick(item: any) {
@@ -69,7 +70,7 @@ const breadcrumbs = computed(() => {
     case "student-absences": return [...base, { label: "Absences" }, { label: "Student Absences" }];
     case "staffing": return [...base, { label: "Staffing" }];
     case "messages": return [...base, { label: "Messages" }];
-    case "timetable": return [...base, { label: "Timetable" }];
+    case "schedule": return [...base, { label: "Schedule" }];
     default: return [...base, { label: "Dashboard" }];
   }
 });
@@ -195,6 +196,12 @@ function isStaffAbsent(staffId: string) {
       new Date(a.startDate) <= new Date() && new Date(a.endDate) >= new Date(),
   );
 }
+
+// =====================
+// SCHEDULE PAGE
+// =====================
+const scheduleTeachers = computed(() => staff.filter((s) => s.role === "teacher"));
+const scheduleClassNames = computed(() => [...new Set(lessons.map((l) => l.className))]);
 
 // =====================
 // MESSAGES PAGE
@@ -710,26 +717,24 @@ function timeAgo(dateStr: string) {
     </div>
 
     <!-- ==================== -->
-    <!-- TIMETABLE            -->
+    <!-- SCHEDULE             -->
     <!-- ==================== -->
-    <div v-else-if="activeMenuId === 'timetable'" class="page-content">
+    <div v-else-if="activeMenuId === 'schedule'" class="page-content page-content-wide">
       <div class="page-title-row">
         <div>
-          <h1 class="page-title">Timetable</h1>
-          <p class="page-subtitle">School schedule and class assignments</p>
+          <h1 class="page-title">Schedule</h1>
+          <p class="page-subtitle">Weekly schedule by teacher or by class, with absences and coverage visualized</p>
         </div>
       </div>
 
-      <div class="empty-state-large">
-        <div class="empty-icon-circle">
-          <span class="material-symbols-rounded" style="font-size: 40px; color: var(--cui-text-subtitle-caption)">calendar_month</span>
-        </div>
-        <h3 class="empty-heading">Timetable coming soon</h3>
-        <p class="empty-desc">The timetable view will show weekly class schedules, room assignments, and how absences affect the daily roster.</p>
-        <CuiButton variant="secondary-outline" icon="arrow_back" @click="activeMenuId = 'dashboard'">
-          Back to Dashboard
-        </CuiButton>
-      </div>
+      <ScheduleCalendar
+        :lessons="lessons"
+        :teachers="scheduleTeachers"
+        :class-names="scheduleClassNames"
+        :absence-requests="absenceRequests"
+        :substitute-options="substituteOptions"
+        :avatar-map="avatarMap"
+      />
     </div>
 
     <MessagingPanel role="principal" :user-id="principal.id" :user-name="principal.name" />
@@ -776,6 +781,10 @@ function timeAgo(dateStr: string) {
 .page-content {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.page-content-wide {
+  max-width: 1400px;
 }
 
 .page-title-row {

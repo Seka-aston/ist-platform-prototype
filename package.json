@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ist/commonui-components": "file:../Documents/builderio-components/components/vue",
+    "@ist-group/commonui-components-vue": "^1.3.1",
     "@tailwindcss/vite": "^4.3.3",
     "chart.js": "^4.5.1",
     "primevue": "^4.5.5",
