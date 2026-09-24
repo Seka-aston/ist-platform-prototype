@@ -543,9 +543,11 @@ function timeAgo(dateStr: string) {
     <!-- STAFFING             -->
     <!-- ==================== -->
     <div v-else-if="activeMenuId === 'staffing'" class="page-content">
-      <div class="page-header-card">
-        <h1 class="page-title">Staffing</h1>
-        <p class="page-subtitle">Staff directory and department overview</p>
+      <div class="page-title-row">
+        <div>
+          <h1 class="page-title">Staffing</h1>
+          <p class="page-subtitle">Staff directory and department overview</p>
+        </div>
       </div>
 
       <div class="staff-stats">
@@ -934,13 +936,6 @@ function timeAgo(dateStr: string) {
   overflow: hidden;
 }
 
-.page-header-card {
-  background: var(--cui-surface-default-white);
-  border: 1px solid var(--cui-border-neutral-subtle);
-  border-radius: var(--ds-radius-xl);
-  padding: var(--ds-space-lg);
-  margin-bottom: var(--ds-space-md);
-}
 
 .cell-person {
   display: flex;
