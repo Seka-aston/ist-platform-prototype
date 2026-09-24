@@ -353,56 +353,63 @@ function timeAgo(dateStr: string) {
         <KpiCard icon="shield" :value="`${coverageRate}%`" label="Coverage Rate" :trend="coverageRate === 100 ? 'All covered' : 'Gaps open'" :trend-direction="coverageRate === 100 ? 'up' : 'down'" icon-color="var(--cui-surface-hero-action)" icon-bg="#f5f3ff" />
       </div>
 
-      <section class="section">
-        <h2 class="section-title">Department Overview</h2>
-        <DepartmentChart :departments="departments" />
+      <section class="dashboard-section-card">
+        <div class="dashboard-section-header">
+          <h2 class="section-title">Department Overview</h2>
+        </div>
+        <div class="dashboard-section-body">
+          <DepartmentChart :departments="departments" />
+        </div>
       </section>
 
-      <section class="section">
-        <div class="section-title-row">
-          <h2 class="section-title">Staffing Gaps</h2>
-          <CuiTag v-if="flaggedGaps.filter(g => !g.substituteId).length > 0" severity="danger" :value="`${flaggedGaps.filter(g => !g.substituteId).length} open`" />
+      <section class="dashboard-section-card">
+        <div class="dashboard-section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">Staffing Gaps</h2>
+            <CuiTag v-if="flaggedGaps.filter(g => !g.substituteId).length > 0" severity="danger" :value="`${flaggedGaps.filter(g => !g.substituteId).length} open`" />
+          </div>
+          <p class="section-desc">Teacher absences requiring substitute coverage</p>
         </div>
-        <p class="section-desc">Teacher absences requiring substitute coverage</p>
-
-        <div class="gaps-grid">
-          <div v-for="gap in flaggedGaps" :key="gap.id" class="gap-card">
-            <div class="gap-header">
-              <div class="gap-teacher">
-                <img class="gap-avatar" :src="avatarMap[gap.requesterId]" :alt="gap.requesterName" />
-                <div>
-                  <div class="gap-name">{{ gap.requesterName }}</div>
-                  <div class="gap-dept">{{ gap.department }}</div>
+        <div class="dashboard-section-body">
+          <div class="gaps-grid">
+            <div v-for="gap in flaggedGaps" :key="gap.id" class="gap-card">
+              <div class="gap-header">
+                <div class="gap-teacher">
+                  <img class="gap-avatar" :src="avatarMap[gap.requesterId]" :alt="gap.requesterName" />
+                  <div>
+                    <div class="gap-name">{{ gap.requesterName }}</div>
+                    <div class="gap-dept">{{ gap.department }}</div>
+                  </div>
+                </div>
+                <CuiTag :severity="gapSeverity(gap)" :value="gapStatusLabel(gap)" />
+              </div>
+              <div class="gap-details">
+                <div class="gap-detail">
+                  <span class="material-symbols-rounded gap-detail-icon">calendar_today</span>
+                  {{ formatDateRange(gap.startDate, gap.endDate) }}
+                </div>
+                <div class="gap-detail">
+                  <span class="material-symbols-rounded gap-detail-icon">info</span>
+                  {{ gap.reason }}
                 </div>
               </div>
-              <CuiTag :severity="gapSeverity(gap)" :value="gapStatusLabel(gap)" />
-            </div>
-            <div class="gap-details">
-              <div class="gap-detail">
-                <span class="material-symbols-rounded gap-detail-icon">calendar_today</span>
-                {{ formatDateRange(gap.startDate, gap.endDate) }}
+              <div class="gap-actions">
+                <CuiButton v-if="!gap.substituteId && gap.status === 'approved'" variant="primary" size="small" icon="person_add" @click="openAssignModal(gap)">
+                  Assign Substitute
+                </CuiButton>
+                <CuiButton v-else-if="gap.status === 'pending'" variant="hero" size="small" icon="check" @click="gap.status = 'approved'">
+                  Approve
+                </CuiButton>
+                <CuiButton v-if="gap.status === 'pending'" variant="secondary-outline" size="small" icon="close" @click="gap.status = 'denied'; gap.coverageNeeded = false;">
+                  Deny
+                </CuiButton>
               </div>
-              <div class="gap-detail">
-                <span class="material-symbols-rounded gap-detail-icon">info</span>
-                {{ gap.reason }}
-              </div>
             </div>
-            <div class="gap-actions">
-              <CuiButton v-if="!gap.substituteId && gap.status === 'approved'" variant="primary" size="small" icon="person_add" @click="openAssignModal(gap)">
-                Assign Substitute
-              </CuiButton>
-              <CuiButton v-else-if="gap.status === 'pending'" variant="hero" size="small" icon="check" @click="gap.status = 'approved'">
-                Approve
-              </CuiButton>
-              <CuiButton v-if="gap.status === 'pending'" variant="secondary-outline" size="small" icon="close" @click="gap.status = 'denied'; gap.coverageNeeded = false;">
-                Deny
-              </CuiButton>
-            </div>
-          </div>
 
-          <div v-if="flaggedGaps.length === 0" class="empty-state">
-            <span class="material-symbols-rounded" style="font-size: 48px; color: var(--cui-text-success-large)">check_circle</span>
-            <p>All staffing gaps are covered</p>
+            <div v-if="flaggedGaps.length === 0" class="empty-state">
+              <span class="material-symbols-rounded" style="font-size: 48px; color: var(--cui-text-success-large)">check_circle</span>
+              <p>All staffing gaps are covered</p>
+            </div>
           </div>
         </div>
       </section>
@@ -412,14 +419,11 @@ function timeAgo(dateStr: string) {
     <!-- TEACHER ABSENCES     -->
     <!-- ==================== -->
     <div v-else-if="activeMenuId === 'teacher-absences'" class="page-content">
-      <div class="page-title-row">
-        <div>
+      <div class="table-card">
+        <div class="table-card-header">
           <h1 class="page-title">Teacher Absences</h1>
           <p class="page-subtitle">Manage teacher leave requests and substitute coverage</p>
         </div>
-      </div>
-
-      <div class="table-card">
         <CuiDataTable :value="teacherAbsences" :rows="10" striped-rows>
           <Column header="Teacher" sortable field="requesterName">
             <template #body="{ data }">
@@ -481,14 +485,11 @@ function timeAgo(dateStr: string) {
     <!-- STUDENT ABSENCES     -->
     <!-- ==================== -->
     <div v-else-if="activeMenuId === 'student-absences'" class="page-content">
-      <div class="page-title-row">
-        <div>
+      <div class="table-card">
+        <div class="table-card-header">
           <h1 class="page-title">Student Absences</h1>
           <p class="page-subtitle">Review and manage student absence requests across all classes</p>
         </div>
-      </div>
-
-      <div class="table-card">
         <CuiDataTable :value="studentAbsences" :rows="10" striped-rows>
           <Column header="Student" sortable field="requesterName">
             <template #body="{ data }">
@@ -542,11 +543,9 @@ function timeAgo(dateStr: string) {
     <!-- STAFFING             -->
     <!-- ==================== -->
     <div v-else-if="activeMenuId === 'staffing'" class="page-content">
-      <div class="page-title-row">
-        <div>
-          <h1 class="page-title">Staffing</h1>
-          <p class="page-subtitle">Staff directory and department overview</p>
-        </div>
+      <div class="page-header-card">
+        <h1 class="page-title">Staffing</h1>
+        <p class="page-subtitle">Staff directory and department overview</p>
       </div>
 
       <div class="staff-stats">
@@ -616,14 +615,11 @@ function timeAgo(dateStr: string) {
     <!-- MESSAGES             -->
     <!-- ==================== -->
     <div v-else-if="activeMenuId === 'messages'" class="page-content">
-      <div class="page-title-row">
-        <div>
+      <div class="messages-layout">
+        <div class="messages-card-header">
           <h1 class="page-title">Messages</h1>
           <p class="page-subtitle">All conversations related to absence requests</p>
         </div>
-      </div>
-
-      <div class="messages-layout">
         <!-- Thread list -->
         <div class="thread-list-panel">
           <div class="thread-list-header">
@@ -701,7 +697,7 @@ function timeAgo(dateStr: string) {
             </div>
           </template>
 
-          <div v-else class="empty-state">
+          <div v-else class="empty-state messages-empty-state">
             <span class="material-symbols-rounded" style="font-size: 48px; color: var(--cui-text-subtitle-caption)">chat</span>
             <p>Select a conversation to view messages</p>
           </div>
@@ -713,22 +709,21 @@ function timeAgo(dateStr: string) {
     <!-- TIMETABLE            -->
     <!-- ==================== -->
     <div v-else-if="activeMenuId === 'timetable'" class="page-content">
-      <div class="page-title-row">
-        <div>
+      <div class="timetable-card">
+        <div class="table-card-header">
           <h1 class="page-title">Timetable</h1>
           <p class="page-subtitle">School schedule and class assignments</p>
         </div>
-      </div>
-
-      <div class="empty-state-large">
-        <div class="empty-icon-circle">
-          <span class="material-symbols-rounded" style="font-size: 40px; color: var(--cui-text-subtitle-caption)">calendar_month</span>
+        <div class="empty-state-large">
+          <div class="empty-icon-circle">
+            <span class="material-symbols-rounded" style="font-size: 40px; color: var(--cui-text-subtitle-caption)">calendar_month</span>
+          </div>
+          <h3 class="empty-heading">Timetable coming soon</h3>
+          <p class="empty-desc">The timetable view will show weekly class schedules, room assignments, and how absences affect the daily roster.</p>
+          <CuiButton variant="secondary-outline" icon="arrow_back" @click="activeMenuId = 'dashboard'">
+            Back to Dashboard
+          </CuiButton>
         </div>
-        <h3 class="empty-heading">Timetable coming soon</h3>
-        <p class="empty-desc">The timetable view will show weekly class schedules, room assignments, and how absences affect the daily roster.</p>
-        <CuiButton variant="secondary-outline" icon="arrow_back" @click="activeMenuId = 'dashboard'">
-          Back to Dashboard
-        </CuiButton>
       </div>
     </div>
 
@@ -808,10 +803,6 @@ function timeAgo(dateStr: string) {
 }
 
 /* Sections */
-.section {
-  margin-bottom: var(--ds-space-xl);
-}
-
 .section-title-row {
   display: flex;
   align-items: center;
@@ -822,13 +813,30 @@ function timeAgo(dateStr: string) {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--cui-text-header-body);
-  margin: 0 0 var(--ds-space-xs);
+  margin: 0;
 }
 
 .section-desc {
   font-size: var(--font-size-sm);
   color: var(--cui-text-subtitle-caption);
-  margin: 0 0 var(--ds-space-md);
+  margin: var(--ds-space-xs) 0 0;
+}
+
+.dashboard-section-card {
+  background: var(--cui-surface-default-white);
+  border: 1px solid var(--cui-border-neutral-subtle);
+  border-radius: var(--ds-radius-xl);
+  overflow: hidden;
+  margin-bottom: var(--ds-space-xl);
+}
+
+.dashboard-section-header {
+  padding: var(--ds-space-lg);
+  border-bottom: 1px solid var(--cui-border-neutral-subtle);
+}
+
+.dashboard-section-body {
+  padding: var(--ds-space-lg);
 }
 
 /* Gaps grid */
@@ -912,6 +920,26 @@ function timeAgo(dateStr: string) {
   border: 1px solid var(--cui-border-neutral-subtle);
   border-radius: var(--ds-radius-xl);
   overflow: hidden;
+}
+
+.table-card-header {
+  padding: var(--ds-space-lg);
+  border-bottom: 1px solid var(--cui-border-neutral-subtle);
+}
+
+.timetable-card {
+  background: var(--cui-surface-default-white);
+  border: 1px solid var(--cui-border-neutral-subtle);
+  border-radius: var(--ds-radius-xl);
+  overflow: hidden;
+}
+
+.page-header-card {
+  background: var(--cui-surface-default-white);
+  border: 1px solid var(--cui-border-neutral-subtle);
+  border-radius: var(--ds-radius-xl);
+  padding: var(--ds-space-lg);
+  margin-bottom: var(--ds-space-md);
 }
 
 .cell-person {
@@ -1051,12 +1079,19 @@ function timeAgo(dateStr: string) {
 .messages-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
+  grid-template-rows: auto 1fr;
   gap: 0;
   background: var(--cui-surface-default-white);
   border: 1px solid var(--cui-border-neutral-subtle);
   border-radius: var(--ds-radius-xl);
   overflow: hidden;
-  height: 600px;
+  height: 700px;
+}
+
+.messages-card-header {
+  grid-column: 1 / -1;
+  padding: var(--ds-space-lg);
+  border-bottom: 1px solid var(--cui-border-neutral-subtle);
 }
 
 .thread-list-panel {
@@ -1256,6 +1291,11 @@ function timeAgo(dateStr: string) {
   gap: var(--ds-space-sm);
   padding: var(--ds-space-2xl);
   color: var(--cui-text-subtitle-caption);
+}
+
+.messages-empty-state {
+  flex: 1;
+  justify-content: center;
 }
 
 .empty-state-large {
