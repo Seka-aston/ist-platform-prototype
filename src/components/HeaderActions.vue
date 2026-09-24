@@ -34,9 +34,9 @@ function toggleMessages() {
   showNotifications.value = false;
 }
 
-// Notifications — role-relevant absence events
+// --- Notifications ---
 const notifications = computed(() => {
-  const items: { id: string; icon: string; title: string; body: string; time: string; read: boolean }[] = [];
+  const items: { id: string; icon: string; iconType: string; title: string; body: string; time: string; read: boolean }[] = [];
 
   for (const req of absenceRequests) {
     if (props.role === "principal") {
@@ -44,6 +44,7 @@ const notifications = computed(() => {
         items.push({
           id: req.id,
           icon: req.type === "teacher" ? "person_off" : "school",
+          iconType: "warn",
           title: `New ${req.type} absence request`,
           body: `${req.requesterName} — ${req.reason}`,
           time: timeAgo(req.createdAt),
@@ -54,6 +55,7 @@ const notifications = computed(() => {
         items.push({
           id: `${req.id}-gap`,
           icon: "warning",
+          iconType: "danger",
           title: "Staffing gap needs coverage",
           body: `${req.requesterName} — no substitute assigned`,
           time: timeAgo(req.createdAt),
@@ -65,6 +67,7 @@ const notifications = computed(() => {
         items.push({
           id: req.id,
           icon: "assignment",
+          iconType: "info",
           title: "Student absence request",
           body: `${req.requesterName} — ${req.reason}`,
           time: timeAgo(req.createdAt),
@@ -75,6 +78,7 @@ const notifications = computed(() => {
         items.push({
           id: req.id,
           icon: req.status === "approved" ? "check_circle" : "cancel",
+          iconType: req.status === "approved" ? "success" : "danger",
           title: `Your request was ${req.status}`,
           body: req.reason,
           time: timeAgo(req.createdAt),
@@ -86,6 +90,7 @@ const notifications = computed(() => {
         items.push({
           id: req.id,
           icon: req.status === "approved" ? "check_circle" : "cancel",
+          iconType: req.status === "approved" ? "success" : "danger",
           title: `Absence ${req.status}`,
           body: req.reason,
           time: timeAgo(req.createdAt),
@@ -97,26 +102,65 @@ const notifications = computed(() => {
   return items.slice(0, 5);
 });
 
-// Recent messages for the user's context
-const recentMessages = computed(() => {
-  const relevant = messages.filter((m) => {
-    const req = absenceRequests.find((a) => a.id === m.threadId);
-    if (!req) return false;
-    if (m.senderRole === "system") return false;
-    if (props.role === "principal") return true;
-    if (props.role === "teacher") {
-      return req.type === "student" || req.requesterId === props.userId;
-    }
-    return req.requesterId === props.userId;
-  });
+// --- Messages: group by thread, show last message per thread ---
+interface ThreadPreview {
+  threadId: string;
+  senderName: string;
+  senderAvatar: string;
+  preview: string;
+  time: string;
+  isOwn: boolean;
+  status: string;
+}
 
-  return [...relevant]
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+const recentThreads = computed<ThreadPreview[]>(() => {
+  const threadMap = new Map<string, typeof messages[0][]>();
+  for (const msg of messages) {
+    const arr = threadMap.get(msg.threadId) || [];
+    arr.push(msg);
+    threadMap.set(msg.threadId, arr);
+  }
+
+  const threads: ThreadPreview[] = [];
+  for (const [threadId, msgs] of threadMap) {
+    const req = absenceRequests.find((a) => a.id === threadId);
+    if (!req) continue;
+
+    // Filter by role visibility
+    if (props.role === "student" && req.requesterId !== props.userId) continue;
+    if (props.role === "teacher" && req.type === "teacher" && req.requesterId !== props.userId) continue;
+    if (props.role === "teacher" && req.type !== "student" && req.requesterId !== props.userId) continue;
+
+    const sorted = [...msgs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const last = sorted[0];
+    if (last.senderRole === "system") continue;
+
+    threads.push({
+      threadId,
+      senderName: last.senderName,
+      senderAvatar: resolveAvatar(last.senderId),
+      preview: last.content.length > 55 ? last.content.slice(0, 55) + "…" : last.content,
+      time: timeAgo(last.timestamp),
+      isOwn: last.senderId === props.userId,
+      status: req.status,
+    });
+  }
+
+  return threads
+    .sort((a, b) => {
+      const aMsg = messages.find((m) => m.threadId === a.threadId && m.senderName === a.senderName);
+      const bMsg = messages.find((m) => m.threadId === b.threadId && m.senderName === b.senderName);
+      return new Date(bMsg?.timestamp ?? 0).getTime() - new Date(aMsg?.timestamp ?? 0).getTime();
+    })
     .slice(0, 5);
 });
 
 const unreadNotifCount = computed(() => notifications.value.filter((n) => !n.read).length);
-const unreadMsgCount = computed(() => recentMessages.value.filter((m) => m.senderId !== props.userId).length);
+const unreadMsgCount = computed(() => recentThreads.value.filter((t) => !t.isOwn).length);
+
+function resolveAvatar(senderId: string): string {
+  return avatarMap[senderId] || "/avatars/avatar-1.svg";
+}
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -141,12 +185,17 @@ function timeAgo(dateStr: string) {
         <div v-if="showNotifications" class="dropdown-panel">
           <div class="dropdown-header">
             <span class="dropdown-title">Notifications</span>
-            <span class="dropdown-count">{{ unreadNotifCount }} new</span>
+            <span v-if="unreadNotifCount > 0" class="dropdown-badge">{{ unreadNotifCount }} new</span>
           </div>
           <div class="dropdown-list">
-            <div v-for="notif in notifications" :key="notif.id" class="dropdown-item" :class="{ 'item-unread': !notif.read }">
-              <div class="item-icon" :class="{ 'icon-warn': notif.icon === 'warning', 'icon-success': notif.icon === 'check_circle', 'icon-danger': notif.icon === 'cancel' }">
-                <span class="material-symbols-rounded" style="font-size: 18px; font-variation-settings: 'FILL' 1">{{ notif.icon }}</span>
+            <div
+              v-for="notif in notifications"
+              :key="notif.id"
+              class="dropdown-item"
+              :class="{ 'item-unread': !notif.read }"
+            >
+              <div class="notif-icon" :class="`notif-icon-${notif.iconType}`">
+                <span class="material-symbols-rounded" style="font-size: 14px; font-variation-settings: 'FILL' 1">{{ notif.icon }}</span>
               </div>
               <div class="item-content">
                 <div class="item-title">{{ notif.title }}</div>
@@ -154,7 +203,13 @@ function timeAgo(dateStr: string) {
               </div>
               <div class="item-time">{{ notif.time }}</div>
             </div>
-            <div v-if="notifications.length === 0" class="dropdown-empty">No notifications</div>
+            <div v-if="notifications.length === 0" class="dropdown-empty">
+              <span class="material-symbols-rounded" style="font-size: 32px; color: var(--cui-text-subtitle-caption)">notifications_off</span>
+              <span>No notifications</span>
+            </div>
+          </div>
+          <div v-if="notifications.length > 0" class="dropdown-footer">
+            <span>View all notifications</span>
           </div>
         </div>
       </Transition>
@@ -171,18 +226,29 @@ function timeAgo(dateStr: string) {
         <div v-if="showMessages" class="dropdown-panel">
           <div class="dropdown-header">
             <span class="dropdown-title">Messages</span>
-            <span class="dropdown-count">{{ unreadMsgCount }} unread</span>
+            <span v-if="unreadMsgCount > 0" class="dropdown-badge">{{ unreadMsgCount }} unread</span>
           </div>
           <div class="dropdown-list">
-            <div v-for="msg in recentMessages" :key="msg.id" class="dropdown-item" :class="{ 'item-unread': msg.senderId !== userId }">
-              <img class="item-avatar" :src="avatarMap[msg.senderId] || '/avatars/avatar-1.svg'" :alt="msg.senderName" />
+            <div
+              v-for="thread in recentThreads"
+              :key="thread.threadId"
+              class="dropdown-item"
+              :class="{ 'item-unread': !thread.isOwn }"
+            >
+              <img class="item-avatar" :src="thread.senderAvatar" :alt="thread.senderName" />
               <div class="item-content">
-                <div class="item-title">{{ msg.senderName }}</div>
-                <div class="item-body">{{ msg.content.length > 60 ? msg.content.slice(0, 60) + '…' : msg.content }}</div>
+                <div class="item-title">{{ thread.senderName }}</div>
+                <div class="item-body">{{ thread.preview }}</div>
               </div>
-              <div class="item-time">{{ timeAgo(msg.timestamp) }}</div>
+              <div class="item-time">{{ thread.time }}</div>
             </div>
-            <div v-if="recentMessages.length === 0" class="dropdown-empty">No messages</div>
+            <div v-if="recentThreads.length === 0" class="dropdown-empty">
+              <span class="material-symbols-rounded" style="font-size: 32px; color: var(--cui-text-subtitle-caption)">forum</span>
+              <span>No messages</span>
+            </div>
+          </div>
+          <div v-if="recentThreads.length > 0" class="dropdown-footer">
+            <span>View all messages</span>
           </div>
         </div>
       </Transition>
@@ -251,50 +317,52 @@ function timeAgo(dateStr: string) {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 360px;
+  width: 340px;
   background: var(--cui-surface-default-white);
   border: 1px solid var(--cui-border-neutral-subtle);
-  border-radius: var(--ds-radius-xl);
-  box-shadow: var(--ds-shadow-lg, 0 10px 25px rgba(0,0,0,0.1));
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.1));
   z-index: 50;
   overflow: hidden;
+  line-height: normal;
 }
 
 .dropdown-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--ds-space-md) var(--ds-space-lg);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
   border-bottom: 1px solid var(--cui-border-neutral-subtle);
 }
 
 .dropdown-title {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--cui-text-header-body);
 }
 
-.dropdown-count {
-  font-size: var(--font-size-xs);
+.dropdown-badge {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
   color: var(--cui-text-subtitle-caption);
 }
 
 .dropdown-list {
-  max-height: 340px;
+  max-height: 360px;
   overflow-y: auto;
 }
 
 .dropdown-item {
   display: flex;
-  align-items: flex-start;
-  gap: var(--ds-space-sm);
-  padding: var(--ds-space-sm) var(--ds-space-lg);
+  align-items: center;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-sm);
   cursor: pointer;
   transition: background 0.1s;
 }
 
 .dropdown-item:hover {
-  background: var(--cui-surface-neutral);
+  background: var(--cui-surface-default-hover);
 }
 
 .item-unread {
@@ -306,41 +374,44 @@ function timeAgo(dateStr: string) {
   filter: brightness(0.97);
 }
 
-.item-icon {
-  width: 32px;
-  height: 32px;
+/* Notification icons */
+.notif-icon {
+  width: 24px;
+  height: 24px;
   border-radius: var(--ds-radius-full);
-  background: var(--cui-surface-neutral);
-  color: var(--cui-text-subtitle-caption);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
-.icon-warn {
+.notif-icon-warn {
   background: var(--cui-surface-warn-lighter);
   color: var(--cui-text-warn-large);
 }
 
-.icon-success {
-  background: var(--cui-surface-success-lighter, #f0fdf4);
-  color: var(--cui-text-success-large);
-}
-
-.icon-danger {
+.notif-icon-danger {
   background: var(--cui-surface-danger-lighter, #fef2f2);
   color: var(--cui-text-danger-large);
 }
 
+.notif-icon-success {
+  background: var(--cui-surface-success-lighter, #f0fdf4);
+  color: var(--cui-text-success-large);
+}
+
+.notif-icon-info {
+  background: var(--cui-surface-info-lighter);
+  color: var(--color-primary);
+}
+
+/* Message avatars */
 .item-avatar {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--ds-radius-full);
   object-fit: cover;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .item-content {
@@ -352,7 +423,7 @@ function timeAgo(dateStr: string) {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--cui-text-header-body);
-  line-height: 1.3;
+  line-height: 1.4;
 }
 
 .item-body {
@@ -365,16 +436,41 @@ function timeAgo(dateStr: string) {
 }
 
 .item-time {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--cui-text-subtitle-caption);
   opacity: 0.7;
   white-space: nowrap;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
+/* Footer */
+.dropdown-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  border-top: 1px solid var(--cui-border-neutral-subtle);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.dropdown-footer span {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--cui-surface-hero-action);
+}
+
+.dropdown-footer:hover {
+  background: var(--cui-surface-default-hover);
+}
+
+/* Empty state */
 .dropdown-empty {
-  padding: var(--ds-space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-xl) var(--ds-space-lg);
   text-align: center;
   font-size: var(--font-size-sm);
   color: var(--cui-text-subtitle-caption);
