@@ -505,15 +505,14 @@ function statusLabel(status: string) {
 
 .page-title-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: var(--ds-space-sm);
   margin-bottom: var(--ds-space-lg);
 }
 
 .page-title {
-  font-family: var(--font-editorial);
-  font-size: var(--font-size-3xl);
-  font-weight: 400;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
   color: var(--cui-text-header-body);
   margin: 0;
 }

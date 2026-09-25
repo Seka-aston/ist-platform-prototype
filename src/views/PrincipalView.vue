@@ -347,10 +347,7 @@ function timeAgo(dateStr: string) {
     <!-- ==================== -->
     <div v-if="activeMenuId === 'dashboard'" class="page-content">
       <div class="page-title-row">
-        <div>
-          <h1 class="page-title">Staffing Dashboard</h1>
-          <p class="page-subtitle">Today, {{ new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) }}</p>
-        </div>
+        <h1 class="page-title">Staffing Dashboard</h1>
       </div>
 
       <div class="kpi-row">
@@ -787,15 +784,14 @@ function timeAgo(dateStr: string) {
 
 .page-title-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: var(--ds-space-sm);
   margin-bottom: var(--ds-space-lg);
 }
 
 .page-title {
-  font-family: var(--font-editorial);
-  font-size: var(--font-size-3xl);
-  font-weight: 400;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
   color: var(--cui-text-header-body);
   margin: 0;
 }
