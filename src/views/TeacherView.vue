@@ -4,13 +4,19 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import HeaderActions from "../components/HeaderActions.vue";
 import MessagingPanel from "../components/MessagingPanel.vue";
+import ScheduleCalendar from "../components/ScheduleCalendar.vue";
 import {
   absenceRequests,
+  approveAbsence,
   avatarMap,
   currentTeacher,
+  denyAbsence,
+  lessons,
   messages,
   principal,
+  staff,
   students,
+  substituteOptions,
   type AbsenceRequest,
 } from "../data/mock";
 import type { MenuEntry } from "@ist-group/commonui-components-vue";
@@ -69,12 +75,18 @@ const studentRequests = computed(() =>
 );
 
 function approveRequest(req: AbsenceRequest) {
-  req.status = "approved";
+  approveAbsence(req, currentTeacher.name);
 }
 
 function denyRequest(req: AbsenceRequest) {
-  req.status = "denied";
+  denyAbsence(req, currentTeacher.name);
 }
+
+// =====================
+// TIMETABLE PAGE
+// =====================
+const scheduleTeachers = computed(() => staff.filter((s) => s.role === "teacher"));
+const scheduleClassNames = computed(() => [...new Set(lessons.map((l) => l.className))]);
 
 // =====================
 // MY ABSENCES PAGE
@@ -529,24 +541,19 @@ function threadMessages(threadId: string) {
     <!-- ==================== -->
     <!-- TIMETABLE            -->
     <!-- ==================== -->
-    <div v-else-if="activeMenuId === 'timetable'" class="page-content">
+    <div v-else-if="activeMenuId === 'timetable'" class="page-content page-content-wide">
       <div class="page-title-row">
-        <div>
-          <h1 class="page-title">Timetable</h1>
-          <p class="page-subtitle">Your weekly teaching schedule</p>
-        </div>
+        <h1 class="page-title">Timetable</h1>
       </div>
 
-      <div class="empty-state-large">
-        <div class="empty-icon-circle">
-          <span class="material-symbols-rounded" style="font-size: 40px; color: var(--cui-text-subtitle-caption)">calendar_month</span>
-        </div>
-        <h3 class="empty-heading">Timetable coming soon</h3>
-        <p class="empty-desc">The timetable view will show your weekly class schedule, room assignments, and how your absences affect the daily roster.</p>
-        <CuiButton variant="secondary-outline" icon="arrow_back" @click="activeMenuId = 'student-requests'">
-          Back to Student Requests
-        </CuiButton>
-      </div>
+      <ScheduleCalendar
+        :lessons="lessons"
+        :teachers="scheduleTeachers"
+        :class-names="scheduleClassNames"
+        :absence-requests="absenceRequests"
+        :substitute-options="substituteOptions"
+        :avatar-map="avatarMap"
+      />
     </div>
 
     <MessagingPanel role="teacher" :user-id="currentTeacher.id" :user-name="currentTeacher.name" />
@@ -603,6 +610,10 @@ function threadMessages(threadId: string) {
 .page-content {
   max-width: 1100px;
   margin: 0 auto;
+}
+
+.page-content-wide {
+  max-width: 1400px;
 }
 
 .page-title-row {

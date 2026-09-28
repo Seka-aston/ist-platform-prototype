@@ -10,7 +10,9 @@ import ScheduleCalendar from "../components/ScheduleCalendar.vue";
 import {
   departments,
   absenceRequests,
+  approveAbsence,
   avatarMap,
+  denyAbsence,
   staff,
   substituteOptions,
   principal,
@@ -133,7 +135,7 @@ function openAssignModal(gap: AbsenceRequest) {
 function assignSubstitute() {
   if (selectedGap.value && selectedSubstitute.value) {
     selectedGap.value.substituteId = selectedSubstitute.value.id;
-    selectedGap.value.status = "approved";
+    approveAbsence(selectedGap.value, principal.name);
     showAssignModal.value = false;
   }
 }
@@ -164,13 +166,15 @@ const studentAbsences = computed(() =>
   absenceRequests.filter((a) => a.type === "student"),
 );
 
-function approveRequest(req: AbsenceRequest) {
-  req.status = "approved";
-}
-
-function denyRequest(req: AbsenceRequest) {
-  req.status = "denied";
-}
+const studentAbsenceStats = computed(() => {
+  const all = studentAbsences.value;
+  return {
+    total: all.length,
+    approved: all.filter((a) => a.status === "approved").length,
+    pending: all.filter((a) => a.status === "pending").length,
+    denied: all.filter((a) => a.status === "denied").length,
+  };
+});
 
 // =====================
 // STAFFING PAGE
@@ -401,10 +405,10 @@ function timeAgo(dateStr: string) {
                 <CuiButton v-if="!gap.substituteId && gap.status === 'approved'" variant="primary" size="small" icon="person_add" @click="openAssignModal(gap)">
                   Assign Substitute
                 </CuiButton>
-                <CuiButton v-else-if="gap.status === 'pending'" variant="hero" size="small" icon="check" @click="gap.status = 'approved'">
+                <CuiButton v-else-if="gap.status === 'pending'" variant="hero" size="small" icon="check" @click="approveAbsence(gap, principal.name)">
                   Approve
                 </CuiButton>
-                <CuiButton v-if="gap.status === 'pending'" variant="secondary-outline" size="small" icon="close" @click="gap.status = 'denied'; gap.coverageNeeded = false;">
+                <CuiButton v-if="gap.status === 'pending'" variant="secondary-outline" size="small" icon="close" @click="denyAbsence(gap, principal.name); gap.coverageNeeded = false;">
                   Deny
                 </CuiButton>
               </div>
@@ -468,10 +472,10 @@ function timeAgo(dateStr: string) {
           <Column header="Actions">
             <template #body="{ data }">
               <div class="action-buttons">
-                <CuiButton v-if="data.status === 'pending'" variant="hero" size="small" icon="check" @click="data.status = 'approved'">
+                <CuiButton v-if="data.status === 'pending'" variant="hero" size="small" icon="check" @click="approveAbsence(data, principal.name)">
                   Approve
                 </CuiButton>
-                <CuiButton v-if="data.status === 'pending'" variant="secondary-outline" size="small" icon="close" @click="data.status = 'denied'; data.coverageNeeded = false;">
+                <CuiButton v-if="data.status === 'pending'" variant="secondary-outline" size="small" icon="close" @click="denyAbsence(data, principal.name); data.coverageNeeded = false;">
                   Deny
                 </CuiButton>
                 <CuiButton v-if="data.coverageNeeded && data.status === 'approved' && !data.substituteId" variant="primary" size="small" icon="person_add" @click="openAssignModal(data)">
@@ -489,10 +493,21 @@ function timeAgo(dateStr: string) {
     <!-- STUDENT ABSENCES     -->
     <!-- ==================== -->
     <div v-else-if="activeMenuId === 'student-absences'" class="page-content">
+      <div class="page-title-row">
+        <h1 class="page-title">Student Absences</h1>
+      </div>
+
+      <div class="kpi-row">
+        <KpiCard icon="description" :value="studentAbsenceStats.total" label="Total Requests" icon-color="var(--color-primary)" icon-bg="var(--cui-surface-info-lighter)" />
+        <KpiCard icon="check_circle" :value="studentAbsenceStats.approved" label="Approved" icon-color="#0d9488" icon-bg="#f0fdfa" />
+        <KpiCard icon="hourglass_top" :value="studentAbsenceStats.pending" label="Pending" icon-color="var(--cui-text-warn-large)" icon-bg="var(--cui-surface-warn-lighter)" />
+        <KpiCard icon="cancel" :value="studentAbsenceStats.denied" label="Denied" icon-color="var(--cui-text-danger-large)" icon-bg="var(--cui-surface-danger-lighter)" />
+      </div>
+
       <div class="table-card">
         <div class="table-card-header">
-          <h1 class="page-title">Student Absences</h1>
-          <p class="page-subtitle">Review and manage student absence requests across all classes</p>
+          <h2 class="section-title">All Requests</h2>
+          <p class="section-desc">Overview of student absence requests handled by teachers</p>
         </div>
         <CuiDataTable :value="studentAbsences" :rows="10" striped-rows>
           <Column header="Student" sortable field="requesterName">
@@ -524,19 +539,6 @@ function timeAgo(dateStr: string) {
           <Column header="Submitted" sortable field="createdAt">
             <template #body="{ data }">
               <span class="cell-secondary">{{ timeAgo(data.createdAt) }}</span>
-            </template>
-          </Column>
-          <Column header="Actions">
-            <template #body="{ data }">
-              <div v-if="data.status === 'pending'" class="action-buttons">
-                <CuiButton variant="hero" size="small" icon="check" @click="approveRequest(data)">
-                  Approve
-                </CuiButton>
-                <CuiButton variant="secondary-outline" size="small" icon="close" @click="denyRequest(data)">
-                  Deny
-                </CuiButton>
-              </div>
-              <span v-else class="cell-secondary">—</span>
             </template>
           </Column>
         </CuiDataTable>
