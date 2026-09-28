@@ -305,3 +305,29 @@ export const currentTeacher = staff.find((s) => s.id === "t1")!;
 
 // --- Helper: currently logged-in student (for student view) ---
 export const currentStudent = students.find((s) => s.id === "st1")!;
+
+// --- Shared actions: approve / deny with system message ---
+let msgCounter = messages.length;
+
+function pushSystemMessage(threadId: string, content: string) {
+  msgCounter++;
+  messages.push({
+    id: `m${msgCounter}`,
+    threadId,
+    senderId: "system",
+    senderName: "System",
+    senderRole: "system",
+    content,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function approveAbsence(req: AbsenceRequest, approverName: string) {
+  req.status = "approved";
+  pushSystemMessage(req.id, `Request approved by ${approverName}.`);
+}
+
+export function denyAbsence(req: AbsenceRequest, approverName: string) {
+  req.status = "denied";
+  pushSystemMessage(req.id, `Request denied by ${approverName}.`)
+}
