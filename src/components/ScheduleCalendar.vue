@@ -20,6 +20,7 @@ const GRID_END_MIN = 16 * 60; // 16:00
 const PX_PER_HOUR = 140;
 const GRID_TOTAL_MIN = GRID_END_MIN - GRID_START_MIN;
 const GRID_HEIGHT_PX = (GRID_TOTAL_MIN / 60) * PX_PER_HOUR;
+const CARD_GAP_PX = 3; // clearance between a lesson card and its surrounding gridlines, equal on all sides
 
 // Whole-hour gridlines that fall within the (possibly non-hour-aligned) range.
 const hourMarks = computed(() => {
@@ -29,6 +30,19 @@ const hourMarks = computed(() => {
       label: `${String(h).padStart(2, "0")}:00`,
       topPct: ((h * 60 - GRID_START_MIN) / GRID_TOTAL_MIN) * 100,
     });
+  }
+  return marks;
+});
+
+// Half-hour gridlines (the :30 marks in between) — drawn lighter/thinner than
+// the whole-hour lines above so the hour structure still reads clearly.
+// Skips the grid's own top edge (which is already a boundary) and every
+// whole hour (already covered by hourMarks).
+const halfHourMarks = computed(() => {
+  const marks = [];
+  for (let m = GRID_START_MIN + 30; m < GRID_END_MIN; m += 30) {
+    if (m % 60 === 0) continue;
+    marks.push({ key: m, topPct: ((m - GRID_START_MIN) / GRID_TOTAL_MIN) * 100 });
   }
   return marks;
 });
@@ -182,16 +196,20 @@ const positionedLessons = computed(() =>
 
       const absence = absenceInfo(lesson.teacherId, lessonDate);
 
+      // Every card sits inset by exactly CARD_GAP_PX from the time
+      // boundaries above/below it and the day-column edges beside it —
+      // equal clearance on all four sides, so the card never touches
+      // (let alone covers) a gridline.
       return {
         lesson,
         dayIndex,
         absence,
         category: subjectCategory(lesson.subject),
         style: {
-          top: `${((startMin - GRID_START_MIN) / totalMin) * 100}%`,
-          height: `${((endMin - startMin) / totalMin) * 100}%`,
-          left: `calc(${(dayIndex / 5) * 100}% + 4px)`,
-          width: `calc(${100 / 5}% - 8px)`,
+          top: `calc(${((startMin - GRID_START_MIN) / totalMin) * 100}% + ${CARD_GAP_PX}px)`,
+          height: `calc(${((endMin - startMin) / totalMin) * 100}% - ${CARD_GAP_PX * 2}px)`,
+          left: `calc(${(dayIndex / 5) * 100}% + ${CARD_GAP_PX}px)`,
+          width: `calc(${100 / 5}% - ${CARD_GAP_PX * 2}px)`,
         },
       };
     }),
@@ -228,16 +246,16 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
         placeholder="Select a class"
         class="entity-select"
       />
+    </div>
 
-      <div class="week-nav">
-        <button type="button" class="week-nav-arrow" aria-label="Previous week" @click="prevWeek">
-          <span class="material-symbols-rounded">chevron_left</span>
-        </button>
-        <span class="week-nav-label">{{ weekRangeLabel }}</span>
-        <button type="button" class="week-nav-arrow" aria-label="Next week" @click="nextWeek">
-          <span class="material-symbols-rounded">chevron_right</span>
-        </button>
-      </div>
+    <div class="week-nav">
+      <button type="button" class="week-nav-arrow" aria-label="Previous week" @click="prevWeek">
+        <span class="material-symbols-rounded">chevron_left</span>
+      </button>
+      <span class="week-nav-label">{{ weekRangeLabel }}</span>
+      <button type="button" class="week-nav-arrow" aria-label="Next week" @click="nextWeek">
+        <span class="material-symbols-rounded">chevron_right</span>
+      </button>
     </div>
 
     <div class="schedule-grid">
@@ -269,6 +287,12 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
         <div class="grid-body" :style="gridBodyStyle">
           <div class="grid-lines">
             <div
+              v-for="mark in halfHourMarks"
+              :key="mark.key"
+              class="grid-line-row grid-line-row-half"
+              :style="{ top: mark.topPct + '%' }"
+            />
+            <div
               v-for="mark in hourMarks"
               :key="mark.label"
               class="grid-line-row"
@@ -297,30 +321,34 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
             ]"
             :style="p.style"
           >
-            <div class="lesson-subject">{{ p.lesson.subject }}</div>
-            <div class="lesson-time">{{ p.lesson.startTime }}–{{ p.lesson.endTime }}</div>
-
-            <div v-if="mode === 'teachers'" class="lesson-meta">
-              <span class="material-symbols-rounded" style="font-size: 13px">school</span>
-              {{ p.lesson.className }}
+            <div class="lesson-card-top">
+              <div class="lesson-subject">{{ p.lesson.subject }}</div>
+              <div class="lesson-time">{{ p.lesson.startTime }}–{{ p.lesson.endTime }}</div>
             </div>
-            <button
-              v-else
-              type="button"
-              class="lesson-teacher-link"
-              @click="selectTeacher(p.lesson.teacherId)"
-            >
-              <img class="lesson-teacher-avatar" :src="avatarMap[p.lesson.teacherId]" :alt="teacherName(p.lesson.teacherId)" />
-              {{ teacherName(p.lesson.teacherId) }}
-            </button>
 
-            <div v-if="p.absence && !p.absence.covered" class="lesson-absence-tag lesson-absence-danger">
-              <span class="material-symbols-rounded" style="font-size: 13px">warning</span>
-              Needs substitute
-            </div>
-            <div v-else-if="p.absence && p.absence.covered" class="lesson-absence-tag lesson-absence-covered">
-              <span class="material-symbols-rounded" style="font-size: 13px">swap_horiz</span>
-              Covered by {{ p.absence.substituteName }}
+            <div class="lesson-card-bottom">
+              <div v-if="mode === 'teachers'" class="lesson-meta">
+                <span class="material-symbols-rounded" style="font-size: 13px">school</span>
+                {{ p.lesson.className }}
+              </div>
+              <button
+                v-else
+                type="button"
+                class="lesson-teacher-link"
+                @click="selectTeacher(p.lesson.teacherId)"
+              >
+                <img class="lesson-teacher-avatar" :src="avatarMap[p.lesson.teacherId]" :alt="teacherName(p.lesson.teacherId)" />
+                {{ teacherName(p.lesson.teacherId) }}
+              </button>
+
+              <div v-if="p.absence && !p.absence.covered" class="lesson-absence-tag lesson-absence-danger">
+                <span class="material-symbols-rounded" style="font-size: 13px">warning</span>
+                Needs substitute
+              </div>
+              <div v-else-if="p.absence && p.absence.covered" class="lesson-absence-tag lesson-absence-covered">
+                <span class="material-symbols-rounded" style="font-size: 13px">swap_horiz</span>
+                Covered by {{ p.absence.substituteName }}
+              </div>
             </div>
           </div>
         </div>
@@ -349,25 +377,47 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
   min-width: max-content;
 }
 
+/* CuiTabs is built on PrimeVue's scrollable Tabs, which shows prev/next
+   scroll chevrons whenever it measures its tab strip as wider than the
+   space available to it — this can still fire in edge cases even with
+   the min-width fix above (e.g. a narrower viewport, or a brief layout
+   pass before it settles). We never want tab-scrolling here (there are
+   only two short tabs), so hide the buttons outright rather than
+   chasing every width edge case. */
+:global(.mode-tabs [data-pc-section="prevbutton"]),
+:global(.mode-tabs [data-pc-section="nextbutton"]) {
+  display: none !important;
+}
+
 .entity-select {
   flex: 0 0 auto;
 }
 
 /* The CuiSelect root isn't tagged with this component's scope attribute,
-   so scoped selectors never match it — target it globally instead. */
+   so scoped selectors never match it — target it globally instead.
+
+   Sized to fit-content/min-width:max-content rather than a fixed px
+   value: a fixed width has to guess how wide the longest name will
+   render, and depending on exact font metrics some names came out a
+   few pixels wider than that guess — since the label's text is
+   genuinely solid-colored (not a fade/opacity effect), the box's edge
+   sliced straight through the last glyph or two, which reads as
+   "faded" even though it's fully opaque, just cut off mid-letter. */
 :global(.entity-select) {
-  width: 220px !important;
+  width: fit-content !important;
+  min-width: max-content !important;
 }
 
 :global(.entity-select .cui-select) {
-  width: 220px !important;
+  width: fit-content !important;
+  min-width: max-content !important;
 }
 
 .week-nav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--ds-space-xs);
-  margin-left: auto;
 }
 
 .week-nav-arrow {
@@ -485,6 +535,13 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
   border-top: 1px solid var(--cui-border-neutral-subtle);
 }
 
+/* Half-hour lines use the same color at reduced opacity, rather than a
+   thinner border (sub-pixel borders don't render reliably across
+   browsers) — visually lighter/lower-weight than the whole-hour lines. */
+.grid-line-row-half {
+  opacity: 0.5;
+}
+
 .grid-columns {
   position: absolute;
   inset: 0;
@@ -525,29 +582,41 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 .lesson-card {
   position: absolute;
   z-index: 2;
-  border-radius: var(--ds-radius-lg);
-  padding: 6px var(--ds-space-sm);
+  border-radius: var(--ds-radius-xl);
+  padding: var(--ds-space-sm);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  justify-content: space-between;
   overflow: hidden;
   border: 1px solid transparent;
 }
 
+/* The card's content is exactly two blocks — primary info up top,
+   secondary/contextual info at the bottom — pinned apart by the card's
+   own justify-content: space-between, each never shrinking below its
+   own natural height. */
+.lesson-card-top,
+.lesson-card-bottom {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .category-stem {
-  background: var(--cui-surface-info-lighter);
+  background: var(--cui-surface-info-light);
 }
 
 .category-languages {
-  background: var(--cui-surface-success-lighter);
+  background: var(--cui-surface-success-light);
 }
 
 .category-humanities {
-  background: var(--cui-surface-warn-lighter);
+  background: var(--cui-surface-warn-light);
 }
 
 .category-arts {
-  background: #f5f3ff;
+  background: #ddd6fe;
 }
 
 [data-theme="dark"] .category-arts {
@@ -555,12 +624,12 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 }
 
 .lesson-card.is-uncovered {
-  background: var(--cui-surface-danger-lighter);
+  background: var(--cui-surface-danger-light);
   border: 1px dashed var(--cui-text-danger-large);
 }
 
 .lesson-card.is-covered {
-  background: #f0fdfa;
+  background: #ccfbf1;
 }
 
 [data-theme="dark"] .lesson-card.is-covered {
@@ -568,8 +637,9 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 }
 
 .lesson-subject {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
   color: var(--cui-text-header-body);
   white-space: nowrap;
   overflow: hidden;
@@ -577,19 +647,25 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 }
 
 .lesson-time {
+  flex-shrink: 0;
   font-size: 11px;
+  font-weight: var(--font-weight-regular, 400);
   color: var(--cui-text-subtitle-caption);
 }
 
 .lesson-meta {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 3px;
   font-size: 11px;
+  font-weight: var(--font-weight-regular, 400);
   color: var(--cui-text-subtitle-caption);
+  margin-top: auto;
 }
 
 .lesson-teacher-link {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -602,6 +678,7 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
   text-align: left;
   font-family: inherit;
   text-decoration: underline;
+  margin-top: auto;
 }
 
 .lesson-teacher-avatar {
@@ -613,6 +690,7 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 }
 
 .lesson-absence-tag {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 3px;

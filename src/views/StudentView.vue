@@ -511,8 +511,9 @@ function statusLabel(status: string) {
 }
 
 .page-title {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-editorial);
+  font-size: var(--font-size-3xl);
+  font-weight: 400;
   color: var(--cui-text-header-body);
   margin: 0;
 }
