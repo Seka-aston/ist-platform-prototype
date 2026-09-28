@@ -160,15 +160,22 @@ function getSubstituteName(subId?: string) {
 }
 
 // --- Row actions ---
-// All actions here go in the overflow menu (quick: false) rather than the
-// quick section: the kebab button only renders when there's at least one
-// overflow item, so this is what gives every row its persistent "⋮" —
-// click it to reveal Approve/Deny (or Assign) as icon+text menu items.
+// All actions here are plain overflow items (quick: false), so
+// CuiRowAction's kebab always renders and its dropdown lists Approve/
+// Deny (or Assign) exactly once. The "quick" icon pair CuiRowAction
+// could render itself would also get auto-merged into that same
+// dropdown with no visual separation from the overflow copy — showing
+// every action twice with nothing to tell the two groups apart — so
+// the hover-revealed Approve/Deny icons are instead hand-rolled
+// separately in the template (see .row-actions-cluster) and just call
+// this same handler directly; the kebab/menu here is left with its
+// own permanent collapsed state so it never grows a second surface of
+// its own — the shared surface is the cluster wrapper's.
 function teacherAbsenceActions(req: AbsenceRequest): RowActionItem[] {
   if (req.status === "pending") {
     return [
       { id: "approve", icon: "check", label: "Approve", quick: false },
-      { id: "deny", icon: "close", label: "Deny", quick: false },
+      { id: "deny", icon: "delete", label: "Deny", quick: false },
     ];
   }
   if (req.coverageNeeded && req.status === "approved" && !req.substituteId) {
@@ -181,6 +188,14 @@ function onTeacherAbsenceAction(req: AbsenceRequest, actionId: string) {
   if (actionId === "approve") approveAbsence(req, principal.name);
   else if (actionId === "deny") { denyAbsence(req, principal.name); req.coverageNeeded = false; }
   else if (actionId === "assign") openAssignModal(req);
+}
+
+const hoveredTeacherAbsenceId = ref<string | null>(null);
+function onTeacherAbsenceRowEnter(e: { data: AbsenceRequest }) {
+  hoveredTeacherAbsenceId.value = e.data.id;
+}
+function onTeacherAbsenceRowLeave() {
+  hoveredTeacherAbsenceId.value = null;
 }
 
 // =====================
@@ -456,7 +471,14 @@ function timeAgo(dateStr: string) {
           <h1 class="page-title">Teacher Absences</h1>
           <p class="page-subtitle">Manage teacher leave requests and substitute coverage</p>
         </div>
-        <CuiDataTable :value="teacherAbsences" :rows="10" striped-rows>
+        <CuiDataTable
+          :value="teacherAbsences"
+          :rows="10"
+          striped-rows
+          row-hover
+          @row-mouse-enter="onTeacherAbsenceRowEnter"
+          @row-mouse-leave="onTeacherAbsenceRowLeave"
+        >
           <Column header="Teacher" sortable field="requesterName">
             <template #body="{ data }">
               <div class="cell-person">
@@ -496,12 +518,37 @@ function timeAgo(dateStr: string) {
           <Column header="Actions">
             <template #body="{ data }">
               <div class="row-actions-cell">
-                <CuiRowAction
+                <div
                   v-if="teacherAbsenceActions(data).length > 0"
-                  :actions="teacherAbsenceActions(data)"
-                  :aria-label="`Actions for ${data.requesterName}'s request`"
-                  @action="onTeacherAbsenceAction(data, $event.id)"
-                />
+                  class="row-actions-cluster"
+                  :class="{ 'is-revealed': hoveredTeacherAbsenceId === data.id }"
+                >
+                  <button
+                    v-if="data.status === 'pending'"
+                    type="button"
+                    class="row-actions-quick-icon"
+                    aria-label="Approve"
+                    @click="onTeacherAbsenceAction(data, 'approve')"
+                  >
+                    <span class="material-symbols-rounded" style="font-size: 16px">check</span>
+                  </button>
+                  <button
+                    v-if="data.status === 'pending'"
+                    type="button"
+                    class="row-actions-quick-icon"
+                    aria-label="Deny"
+                    @click="onTeacherAbsenceAction(data, 'deny')"
+                  >
+                    <span class="material-symbols-rounded" style="font-size: 16px">delete</span>
+                  </button>
+                  <span v-if="data.status === 'pending'" class="row-actions-divider" />
+                  <CuiRowAction
+                    :actions="teacherAbsenceActions(data)"
+                    collapsed
+                    :aria-label="`Actions for ${data.requesterName}'s request`"
+                    @action="onTeacherAbsenceAction(data, $event.id)"
+                  />
+                </div>
                 <span v-else class="cell-secondary">—</span>
               </div>
             </template>
@@ -990,6 +1037,68 @@ function timeAgo(dateStr: string) {
   min-height: 28px;
   display: flex;
   align-items: center;
+}
+
+/* Bare kebab at rest; hovering the row reveals a shared pill surface
+   (matching CuiRowAction's own --floating look) behind the kebab plus
+   the quick approve/deny icons beside it. */
+.row-actions-cluster {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0.25rem 0.375rem;
+  border-radius: var(--ds-radius-xl);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.row-actions-cluster.is-revealed {
+  background: var(--cui-surface-default-white);
+  border-color: var(--cui-border-neutral-subtle);
+  box-shadow: var(--ds-shadow-md);
+}
+
+.row-actions-quick-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--cui-text-subtitle-caption);
+  transition: width 0.18s ease, opacity 0.18s ease;
+}
+
+.row-actions-cluster.is-revealed .row-actions-quick-icon {
+  width: 1.5rem;
+  opacity: 1;
+}
+
+.row-actions-quick-icon:hover {
+  color: var(--cui-text-header-body);
+}
+
+.row-actions-divider {
+  width: 1px;
+  height: 1.25rem;
+  background-color: var(--cui-border-neutral);
+  opacity: 0;
+  margin: 0 2px;
+  transition: opacity 0.18s ease;
+}
+
+.row-actions-cluster.is-revealed .row-actions-divider {
+  opacity: 1;
 }
 
 /* Staffing page */
