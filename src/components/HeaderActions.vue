@@ -356,7 +356,7 @@ function timeAgo(dateStr: string) {
   display: flex;
   align-items: center;
   gap: var(--ds-space-xs);
-  padding: var(--ds-space-sm);
+  padding: 0.8rem var(--ds-space-sm);
   cursor: pointer;
   transition: background 0.1s;
 }
@@ -372,6 +372,18 @@ function timeAgo(dateStr: string) {
 .item-unread:hover {
   background: var(--cui-surface-info-lighter);
   filter: brightness(0.97);
+}
+
+/* Unread highlight uses the brand purple in dark mode instead of CUI's
+   own (blue) info-lighter dark value, to match the rest of the app's
+   purple-only dark palette. */
+[data-theme="dark"] .item-unread {
+  background: var(--cui-brand-dark-variant);
+}
+
+[data-theme="dark"] .item-unread:hover {
+  background: var(--cui-brand-dark-variant);
+  filter: brightness(1.1);
 }
 
 /* Notification icons */

@@ -19,7 +19,7 @@ import {
   type AbsenceRequest,
   type SubstituteOption,
 } from "../data/mock";
-import type { MenuEntry } from "@ist-group/commonui-components-vue";
+import type { MenuEntry, RowActionItem } from "@ist-group/commonui-components-vue";
 
 const router = useRouter();
 
@@ -155,6 +155,43 @@ function getSubstituteName(subId?: string) {
   if (!subId) return "—";
   const sub = staff.find((s) => s.id === subId) ?? substituteOptions.find((s) => s.id === subId);
   return sub?.name ?? "Assigned";
+}
+
+// --- Row actions ---
+// All actions here go in the overflow menu (quick: false) rather than the
+// quick section: the kebab button only renders when there's at least one
+// overflow item, so this is what gives every row its persistent "⋮" —
+// click it to reveal Approve/Deny (or Assign) as icon+text menu items.
+function teacherAbsenceActions(req: AbsenceRequest): RowActionItem[] {
+  if (req.status === "pending") {
+    return [
+      { id: "approve", icon: "check", label: "Approve", quick: false },
+      { id: "deny", icon: "close", label: "Deny", quick: false },
+    ];
+  }
+  if (req.coverageNeeded && req.status === "approved" && !req.substituteId) {
+    return [{ id: "assign", icon: "person_add", label: "Assign substitute", quick: false }];
+  }
+  return [];
+}
+
+function onTeacherAbsenceAction(req: AbsenceRequest, actionId: string) {
+  if (actionId === "approve") req.status = "approved";
+  else if (actionId === "deny") { req.status = "denied"; req.coverageNeeded = false; }
+  else if (actionId === "assign") openAssignModal(req);
+}
+
+function studentAbsenceActions(req: AbsenceRequest): RowActionItem[] {
+  if (req.status !== "pending") return [];
+  return [
+    { id: "approve", icon: "check", label: "Approve", quick: false },
+    { id: "deny", icon: "close", label: "Deny", quick: false },
+  ];
+}
+
+function onStudentAbsenceAction(req: AbsenceRequest, actionId: string) {
+  if (actionId === "approve") approveRequest(req);
+  else if (actionId === "deny") denyRequest(req);
 }
 
 // =====================
@@ -355,9 +392,9 @@ function timeAgo(dateStr: string) {
 
       <div class="kpi-row">
         <KpiCard icon="groups" :value="totalStaff" label="Total Staff" trend="+2.1%" trend-direction="up" icon-color="var(--color-primary)" icon-bg="var(--cui-surface-info-lighter)" />
-        <KpiCard icon="check_circle" :value="presentStaff" label="Present Today" trend="+4.3%" trend-direction="up" icon-color="#0d9488" icon-bg="#f0fdfa" />
+        <KpiCard icon="check_circle" :value="presentStaff" label="Present Today" trend="+4.3%" trend-direction="up" icon-color="var(--cui-kpi-present-color, #0d9488)" icon-bg="var(--cui-kpi-present-bg, #f0fdfa)" />
         <KpiCard icon="person_off" :value="absentStaff" label="On Leave" trend="-1.8%" trend-direction="down" icon-color="var(--cui-text-warn-large)" icon-bg="var(--cui-surface-warn-lighter)" />
-        <KpiCard icon="shield" :value="`${coverageRate}%`" label="Coverage Rate" :trend="coverageRate === 100 ? 'All covered' : 'Gaps open'" :trend-direction="coverageRate === 100 ? 'up' : 'down'" icon-color="var(--cui-surface-hero-action)" icon-bg="#f5f3ff" />
+        <KpiCard icon="shield" :value="`${coverageRate}%`" label="Coverage Rate" :trend="coverageRate === 100 ? 'All covered' : 'Gaps open'" :trend-direction="coverageRate === 100 ? 'up' : 'down'" icon-color="var(--cui-surface-hero-action)" icon-bg="var(--cui-kpi-coverage-bg, #f5f3ff)" />
       </div>
 
       <section class="dashboard-section-card">
@@ -470,17 +507,14 @@ function timeAgo(dateStr: string) {
           </Column>
           <Column header="Actions">
             <template #body="{ data }">
-              <div class="action-buttons">
-                <CuiButton v-if="data.status === 'pending'" variant="hero" size="small" icon="check" @click="data.status = 'approved'">
-                  Approve
-                </CuiButton>
-                <CuiButton v-if="data.status === 'pending'" variant="secondary-outline" size="small" icon="close" @click="data.status = 'denied'; data.coverageNeeded = false;">
-                  Deny
-                </CuiButton>
-                <CuiButton v-if="data.coverageNeeded && data.status === 'approved' && !data.substituteId" variant="primary" size="small" icon="person_add" @click="openAssignModal(data)">
-                  Assign
-                </CuiButton>
-                <span v-if="data.status !== 'pending' && !(data.coverageNeeded && data.status === 'approved' && !data.substituteId)" class="cell-secondary">—</span>
+              <div class="row-actions-cell">
+                <CuiRowAction
+                  v-if="teacherAbsenceActions(data).length > 0"
+                  :actions="teacherAbsenceActions(data)"
+                  :aria-label="`Actions for ${data.requesterName}'s request`"
+                  @action="onTeacherAbsenceAction(data, $event.id)"
+                />
+                <span v-else class="cell-secondary">—</span>
               </div>
             </template>
           </Column>
@@ -531,15 +565,15 @@ function timeAgo(dateStr: string) {
           </Column>
           <Column header="Actions">
             <template #body="{ data }">
-              <div v-if="data.status === 'pending'" class="action-buttons">
-                <CuiButton variant="hero" size="small" icon="check" @click="approveRequest(data)">
-                  Approve
-                </CuiButton>
-                <CuiButton variant="secondary-outline" size="small" icon="close" @click="denyRequest(data)">
-                  Deny
-                </CuiButton>
+              <div class="row-actions-cell">
+                <CuiRowAction
+                  v-if="studentAbsenceActions(data).length > 0"
+                  :actions="studentAbsenceActions(data)"
+                  :aria-label="`Actions for ${data.requesterName}'s request`"
+                  @action="onStudentAbsenceAction(data, $event.id)"
+                />
+                <span v-else class="cell-secondary">—</span>
               </div>
-              <span v-else class="cell-secondary">—</span>
             </template>
           </Column>
         </CuiDataTable>
@@ -558,18 +592,9 @@ function timeAgo(dateStr: string) {
       </div>
 
       <div class="staff-stats">
-        <div class="stat-card">
-          <div class="stat-value">{{ staff.filter(s => s.role === 'teacher').length }}</div>
-          <div class="stat-label">Teachers</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ staff.filter(s => s.role === 'substitute').length }}</div>
-          <div class="stat-label">Substitutes</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ departments.length }}</div>
-          <div class="stat-label">Departments</div>
-        </div>
+        <KpiCard icon="school" :value="staff.filter(s => s.role === 'teacher').length" label="Teachers" icon-color="var(--color-primary)" icon-bg="var(--cui-surface-info-lighter)" />
+        <KpiCard icon="swap_horiz" :value="staff.filter(s => s.role === 'substitute').length" label="Substitutes" icon-color="var(--cui-surface-hero-action)" icon-bg="var(--cui-kpi-coverage-bg, #f5f3ff)" />
+        <KpiCard icon="apartment" :value="departments.length" label="Departments" icon-color="var(--cui-kpi-present-color, #0d9488)" icon-bg="var(--cui-kpi-present-bg, #f0fdfa)" />
       </div>
 
       <div class="dept-sections">
@@ -974,38 +999,19 @@ function timeAgo(dateStr: string) {
   font-weight: var(--font-weight-medium);
 }
 
-.action-buttons {
+.row-actions-cell {
+  position: relative;
+  min-height: 28px;
   display: flex;
-  gap: var(--ds-space-xs);
+  align-items: center;
 }
 
 /* Staffing page */
 .staff-stats {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--ds-space-md);
   margin-bottom: var(--ds-space-xl);
-}
-
-.stat-card {
-  background: var(--cui-surface-default-white);
-  border: 1px solid var(--cui-border-neutral-subtle);
-  border-radius: var(--ds-radius-xl);
-  padding: var(--ds-space-md) var(--ds-space-lg);
-  flex: 1;
-  text-align: center;
-}
-
-.stat-value {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--cui-text-header-body);
-  line-height: 1.1;
-}
-
-.stat-label {
-  font-size: var(--font-size-sm);
-  color: var(--cui-text-subtitle-caption);
-  margin-top: 2px;
 }
 
 .dept-sections {
@@ -1233,7 +1239,7 @@ function timeAgo(dateStr: string) {
 
 .bubble-own {
   background: var(--cui-surface-hero-action);
-  color: white;
+  color: var(--cui-text-on-dark-default);
 }
 
 .msg-system-bubble {
@@ -1368,6 +1374,10 @@ function timeAgo(dateStr: string) {
 .sub-selected {
   border-color: var(--cui-surface-hero-action);
   background: #f5f3ff;
+}
+
+[data-theme="dark"] .sub-selected {
+  background: var(--cui-brand-dark-variant);
 }
 
 .sub-info {

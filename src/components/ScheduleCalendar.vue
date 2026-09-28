@@ -99,16 +99,19 @@ const nowLine = computed(() => {
 });
 
 // --- Mode + selection ---
-const mode = ref<"teachers" | "classes">("teachers");
-const modeOptions = [
-  { label: "Teachers", value: "teachers" },
-  { label: "Classes", value: "classes" },
+// CuiTabs' modelValue is a plain tab id (number), so the toggle is keyed
+// 0/1 here and exposed as a readable "teachers" | "classes" string below.
+const modeTabId = ref(0);
+const modeTabs = [
+  { id: 0, label: "Teachers", wcagLabel: "View teachers' schedules" },
+  { id: 1, label: "Classes", wcagLabel: "View classes' schedules" },
 ];
+const mode = computed(() => (modeTabId.value === 0 ? "teachers" : "classes"));
 
-const teacherChips = computed(() =>
+const teacherOptions = computed(() =>
   props.teachers.map((t) => ({ value: t.id, label: t.name })),
 );
-const classChips = computed(() =>
+const classOptions = computed(() =>
   props.classNames.map((c) => ({ value: c, label: c })),
 );
 
@@ -117,7 +120,7 @@ const selectedClassName = ref(props.classNames[0] ?? "");
 
 function selectTeacher(teacherId: string) {
   selectedTeacherId.value = teacherId;
-  mode.value = "teachers";
+  modeTabId.value = 0;
 }
 
 // --- Lessons for the active selection ---
@@ -201,21 +204,29 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 <template>
   <div class="schedule">
     <div class="schedule-toolbar">
-      <CuiSelectButton
-        v-model="mode"
-        :options="modeOptions"
+      <CuiTabs
+        v-model="modeTabId"
+        :tabs="modeTabs"
+        wcag-label="Schedule view"
+        class="mode-tabs"
+      />
+      <CuiSelect
+        v-if="mode === 'teachers'"
+        :options="teacherOptions"
         option-label="label"
         option-value="value"
-      />
-      <CuiChipGroup
-        v-if="mode === 'teachers'"
-        :items="teacherChips"
         v-model="selectedTeacherId"
+        placeholder="Select a teacher"
+        class="entity-select"
       />
-      <CuiChipGroup
+      <CuiSelect
         v-else
-        :items="classChips"
+        :options="classOptions"
+        option-label="label"
+        option-value="value"
         v-model="selectedClassName"
+        placeholder="Select a class"
+        class="entity-select"
       />
 
       <div class="week-nav">
@@ -330,6 +341,26 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
   align-items: center;
   gap: var(--ds-space-md);
   flex-wrap: wrap;
+}
+
+.mode-tabs {
+  flex: 0 0 auto;
+  width: fit-content;
+  min-width: max-content;
+}
+
+.entity-select {
+  flex: 0 0 auto;
+}
+
+/* The CuiSelect root isn't tagged with this component's scope attribute,
+   so scoped selectors never match it — target it globally instead. */
+:global(.entity-select) {
+  width: 220px !important;
+}
+
+:global(.entity-select .cui-select) {
+  width: 220px !important;
 }
 
 .week-nav {
@@ -519,6 +550,10 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
   background: #f5f3ff;
 }
 
+[data-theme="dark"] .category-arts {
+  background: var(--cui-brand-dark-variant);
+}
+
 .lesson-card.is-uncovered {
   background: var(--cui-surface-danger-lighter);
   border: 1px dashed var(--cui-text-danger-large);
@@ -526,6 +561,10 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 
 .lesson-card.is-covered {
   background: #f0fdfa;
+}
+
+[data-theme="dark"] .lesson-card.is-covered {
+  background: var(--cui-surface-success-lighter);
 }
 
 .lesson-subject {
@@ -588,5 +627,9 @@ const gridHourLabelsStyle = { height: `${GRID_HEIGHT_PX}px` };
 
 .lesson-absence-covered {
   color: #0d9488;
+}
+
+[data-theme="dark"] .lesson-absence-covered {
+  color: var(--cui-text-success-large);
 }
 </style>

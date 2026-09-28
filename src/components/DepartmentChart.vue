@@ -9,8 +9,25 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { useTheme } from "@ist-group/commonui-components-vue";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+
+const { isDark } = useTheme();
+
+// Chart.js can't read CSS custom properties, so these have to be resolved
+// to literal colors in JS. Only the chrome (legend/tooltip/ticks) and the
+// staff chart's present/absent colors are swapped for dark mode, since
+// those map onto documented status colors — the student chart's blue/amber
+// aren't part of that palette and read fine unchanged in both themes.
+const chartColors = computed(() => ({
+  present: isDark.value ? "#249c55" : "#0d9488",
+  absent: isDark.value ? "#f87171" : "#ef4444",
+  legend: isDark.value ? "#878787" : "#64748b",
+  tooltipBg: isDark.value ? "#0c0a14" : "#1e293b",
+  tickX: isDark.value ? "#878787" : "#94a3b8",
+  tickY: isDark.value ? "#f7f7f7" : "#334155",
+}));
 
 const props = defineProps<{
   departments: {
@@ -28,7 +45,7 @@ const chartData = computed(() => ({
     {
       label: "Present",
       data: props.departments.map((d) => d.presentStaff),
-      backgroundColor: "#0d9488",
+      backgroundColor: chartColors.value.present,
       borderRadius: 4,
       barPercentage: 0.6,
       categoryPercentage: 0.7,
@@ -36,7 +53,7 @@ const chartData = computed(() => ({
     {
       label: "Absent",
       data: props.departments.map((d) => d.totalStaff - d.presentStaff),
-      backgroundColor: "#ef4444",
+      backgroundColor: chartColors.value.absent,
       borderRadius: 4,
       barPercentage: 0.6,
       categoryPercentage: 0.7,
@@ -56,11 +73,11 @@ const chartOptions = computed(() => ({
         pointStyle: "circle",
         padding: 20,
         font: { family: "Inter, sans-serif", size: 12 },
-        color: "#64748b",
+        color: chartColors.value.legend,
       },
     },
     tooltip: {
-      backgroundColor: "#1e293b",
+      backgroundColor: chartColors.value.tooltipBg,
       titleFont: { family: "Inter, sans-serif", size: 13, weight: 600 },
       bodyFont: { family: "Inter, sans-serif", size: 12 },
       padding: 10,
@@ -82,7 +99,7 @@ const chartOptions = computed(() => ({
       grid: { display: false },
       ticks: {
         font: { family: "Inter, sans-serif", size: 11 },
-        color: "#94a3b8",
+        color: chartColors.value.tickX,
         stepSize: 2,
       },
       border: { display: false },
@@ -92,7 +109,7 @@ const chartOptions = computed(() => ({
       grid: { display: false },
       ticks: {
         font: { family: "Inter, sans-serif", size: 12, weight: 500 },
-        color: "#334155",
+        color: chartColors.value.tickY,
         padding: 8,
       },
       border: { display: false },
@@ -134,11 +151,11 @@ const studentOptions = computed(() => ({
         pointStyle: "circle",
         padding: 20,
         font: { family: "Inter, sans-serif", size: 12 },
-        color: "#64748b",
+        color: chartColors.value.legend,
       },
     },
     tooltip: {
-      backgroundColor: "#1e293b",
+      backgroundColor: chartColors.value.tooltipBg,
       titleFont: { family: "Inter, sans-serif", size: 13, weight: 600 },
       bodyFont: { family: "Inter, sans-serif", size: 12 },
       padding: 10,
@@ -160,7 +177,7 @@ const studentOptions = computed(() => ({
       grid: { display: false },
       ticks: {
         font: { family: "Inter, sans-serif", size: 11 },
-        color: "#94a3b8",
+        color: chartColors.value.tickX,
       },
       border: { display: false },
     },
@@ -169,7 +186,7 @@ const studentOptions = computed(() => ({
       grid: { display: false },
       ticks: {
         font: { family: "Inter, sans-serif", size: 12, weight: 500 },
-        color: "#334155",
+        color: chartColors.value.tickY,
         padding: 8,
       },
       border: { display: false },

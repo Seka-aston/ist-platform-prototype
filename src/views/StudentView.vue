@@ -908,7 +908,7 @@ function statusLabel(status: string) {
 
 .bubble-own {
   background: var(--cui-surface-hero-action);
-  color: white;
+  color: var(--cui-text-on-dark-default);
 }
 
 .msg-system-bubble {

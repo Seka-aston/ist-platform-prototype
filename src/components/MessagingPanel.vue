@@ -243,7 +243,7 @@ watch(isOpen, (val) => {
   height: 52px;
   border-radius: var(--ds-radius-full);
   background: var(--cui-surface-hero-action);
-  color: white;
+  color: var(--cui-text-on-dark-default);
   border: none;
   cursor: pointer;
   display: flex;
@@ -270,7 +270,7 @@ watch(isOpen, (val) => {
   height: 20px;
   border-radius: var(--ds-radius-full);
   background: var(--cui-surface-notification-badge);
-  color: white;
+  color: var(--cui-text-on-dark-default);
   font-size: 11px;
   font-weight: var(--font-weight-bold);
   display: flex;
@@ -497,7 +497,7 @@ watch(isOpen, (val) => {
 
 .bubble-own {
   background: var(--cui-surface-hero-action);
-  color: white;
+  color: var(--cui-text-on-dark-default);
 }
 
 .msg-system-content {
@@ -560,7 +560,7 @@ watch(isOpen, (val) => {
   border-radius: var(--ds-radius-lg);
   border: none;
   background: var(--cui-surface-hero-action);
-  color: white;
+  color: var(--cui-text-on-dark-default);
   cursor: pointer;
   display: flex;
   align-items: center;

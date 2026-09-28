@@ -18,3 +18,115 @@
     "GRAD" 0,
     "opsz" 24;
 }
+
+/* CuiApp hardcodes .cui-app__main's height to calc(100vh - 70px) whenever
+   a header slot is used (assuming a 70px header) — our CuiHeader isn't
+   exactly that tall, so it was leaving a dead strip below the scrollable
+   content instead of letting content/scroll fill the true full height.
+   Let flexbox stretch (from its min-h-screen row parent) size it fully
+   instead. */
+.cui-app__main {
+  max-height: none !important;
+}
+
+/* CuiMainMenu's own collapse-width transition is broken: its Tailwind
+   arbitrary class compiles to `transition: width var(--ds-transition-normal) ease`,
+   but --ds-transition-normal already bundles its own easing function
+   (".2s ease") — the resulting declaration ends up with two timing
+   functions, which is invalid, so the browser drops it entirely and the
+   sidebar snaps open/closed instead of animating. Reassert a valid one. */
+.cuimainmenu {
+  transition: width var(--ds-transition-normal, 0.2s ease);
+}
+
+/* App background pictogram — sits behind the main content area (not the
+   sidebar/header), anchored to the bottom so the polygon shapes read at
+   the bottom of the viewport, matching the provided reference.
+
+   Applied to both .cui-app__main (now full-height, see above) and the
+   outer .cui-app--desktop/.cui-app--mobile root as a safety net for any
+   remaining sub-pixel rounding gap between them — both use identical
+   position/size/fixed-attachment so they align pixel-for-pixel.
+
+   Uses "cover" rather than an explicit percentage size: percentage
+   background-size on these elements didn't resolve against the full
+   content-area width (some narrower ancestor box instead), leaving the
+   pictogram short of the right/left edges — "cover" sizes correctly
+   regardless of that. Dark mode drops the image entirely (see below)
+   rather than trying to confine it to a partial-height band. */
+.cui-app__main,
+.cui-app--desktop,
+.cui-app--mobile {
+  background-color: var(--cui-background-content-dashboard);
+  background-image: url("/backgrounds/app-bg-polygon.jpg");
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+[data-theme="dark"] .cui-app__main,
+[data-theme="dark"] .cui-app--desktop,
+[data-theme="dark"] .cui-app--mobile {
+  background-image: none;
+}
+
+#cui-main-content {
+  background-color: transparent;
+}
+
+/* --- Dark mode palette (overrides CUI's own defaults) ---
+   CUI already ships [data-theme="dark"] values for its own tokens, but
+   they're a generic slate palette, not the branded one documented in
+   Figma. This block replaces the ones that matter for this app with the
+   documented values, consolidated to two near-black surfaces (#1f1b2f
+   for cards/elevated surfaces, #0c0a14 for the page base and dividers)
+   per the doc's own consolidation recommendation, rather than the 5
+   distinct near-blacks it also lists. */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --cui-surface-default-white: #1f1b2f;
+  --cui-background-content-dashboard: #0c0a14;
+  --cui-background-content: #0c0a14;
+  --cui-surface-default-gray: #0c0a14;
+
+  /* Borders */
+  --cui-border-neutral-subtle: #0c0a14;
+  --cui-border-neutral: #2f255b;
+
+  /* Text */
+  --cui-text-header-body: #f7f7f7;
+  --cui-text-subtitle-caption: #878787;
+
+  /* Brand — documented as unchanged; CUI's own dark default (#6d28d9)
+     would otherwise silently drift the brand purple. */
+  --cui-surface-hero-action: #4e33d9;
+  /* Dark-mode-only accent (no light-mode equivalent), e.g. for the
+     "selected" state in the Assign Substitute modal. */
+  --cui-brand-dark-variant: #5a27c8;
+
+  /* Status colors — adopt the documented dark values in place of CUI's
+     own (different) defaults. */
+  --cui-surface-success-lighter: #223c26;
+  --cui-text-success-large: #249c55;
+  --cui-surface-warn-lighter: #c39e26;
+  --cui-text-warn-small: #e6bc46;
+
+  /* One-off KPI icon tints (Principal dashboard) that don't map cleanly
+     onto an existing semantic token in light mode — referenced there as
+     var(--cui-kpi-*, <light-hex-fallback>), only defined here for dark. */
+  --cui-kpi-present-color: var(--cui-text-success-large);
+  --cui-kpi-present-bg: var(--cui-surface-success-lighter);
+  --cui-kpi-coverage-bg: var(--cui-brand-dark-variant);
+
+  /* CuiDataTable (PrimeVue-based) rows/borders use Tailwind's raw
+     "surface" scale via dark: utilities (bg-surface-900, etc.), reading
+     --p-surface-* — a separate variable family from --cui-*, so it
+     wasn't touched by the overrides above and rendered as flat
+     Tailwind zinc-black instead of our purple palette. Redirect it to
+     the same family so tables match cards/sidebar instead of going
+     black. */
+  --p-surface-900: #1f1b2f;
+  --p-surface-800: #2f255b;
+  --p-surface-700: #3a3159;
+}

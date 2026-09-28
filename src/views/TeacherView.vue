@@ -13,7 +13,7 @@ import {
   students,
   type AbsenceRequest,
 } from "../data/mock";
-import type { MenuEntry } from "@ist-group/commonui-components-vue";
+import type { MenuEntry, RowActionItem } from "@ist-group/commonui-components-vue";
 
 const router = useRouter();
 
@@ -74,6 +74,22 @@ function approveRequest(req: AbsenceRequest) {
 
 function denyRequest(req: AbsenceRequest) {
   req.status = "denied";
+}
+
+// --- Row actions ---
+// Both go in the overflow menu (quick: false) so the row always shows a
+// persistent "⋮" — the kebab only renders when there's an overflow item.
+function studentRequestActions(req: AbsenceRequest): RowActionItem[] {
+  if (req.status !== "pending") return [];
+  return [
+    { id: "approve", icon: "check", label: "Approve", quick: false },
+    { id: "deny", icon: "close", label: "Deny", quick: false },
+  ];
+}
+
+function onStudentRequestAction(req: AbsenceRequest, actionId: string) {
+  if (actionId === "approve") approveRequest(req);
+  else if (actionId === "deny") denyRequest(req);
 }
 
 // =====================
@@ -322,15 +338,15 @@ function threadMessages(threadId: string) {
           </Column>
           <Column header="Actions">
             <template #body="{ data }">
-              <div v-if="data.status === 'pending'" class="action-buttons">
-                <CuiButton variant="primary" size="small" icon="check" @click="approveRequest(data)">
-                  Approve
-                </CuiButton>
-                <CuiButton variant="secondary-outline" size="small" icon="close" @click="denyRequest(data)">
-                  Deny
-                </CuiButton>
+              <div class="row-actions-cell">
+                <CuiRowAction
+                  v-if="studentRequestActions(data).length > 0"
+                  :actions="studentRequestActions(data)"
+                  :aria-label="`Actions for ${data.requesterName}'s request`"
+                  @action="onStudentRequestAction(data, $event.id)"
+                />
+                <span v-else class="cell-secondary">—</span>
               </div>
-              <span v-else class="cell-secondary">—</span>
             </template>
           </Column>
         </CuiDataTable>
@@ -657,9 +673,11 @@ function threadMessages(threadId: string) {
   color: var(--cui-text-subtitle-caption);
 }
 
-.action-buttons {
+.row-actions-cell {
+  position: relative;
+  min-height: 28px;
   display: flex;
-  gap: var(--ds-space-xs);
+  align-items: center;
 }
 
 /* My Absences cards */
@@ -927,7 +945,7 @@ function threadMessages(threadId: string) {
 
 .bubble-own {
   background: var(--cui-surface-hero-action);
-  color: white;
+  color: var(--cui-text-on-dark-default);
 }
 
 .msg-system-bubble {

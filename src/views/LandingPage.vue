@@ -11,8 +11,6 @@ const roles = [
     description: "Staffing dashboard, department overview, substitute assignment",
     person: "Margareta Håkansson",
     route: "/principal",
-    color: "var(--cui-surface-hero-action)",
-    bgLight: "#f5f3ff",
   },
   {
     key: "teacher",
@@ -21,8 +19,6 @@ const roles = [
     description: "Review student absences, request your own leave",
     person: "Anna Lindqvist",
     route: "/teacher",
-    color: "var(--color-primary)",
-    bgLight: "#ebf8ff",
   },
   {
     key: "student",
@@ -31,8 +27,6 @@ const roles = [
     description: "Request absence, track approval status",
     person: "Alma Wikström",
     route: "/student",
-    color: "#0d9488",
-    bgLight: "#f0fdfa",
   },
 ];
 
@@ -66,7 +60,7 @@ function enterRole(route: string) {
           class="role-card"
           @click="enterRole(role.route)"
         >
-          <div class="role-icon" :style="{ backgroundColor: role.bgLight, color: role.color }">
+          <div class="role-icon" :class="`role-icon--${role.key}`">
             <span class="material-symbols-rounded">{{ role.icon }}</span>
           </div>
           <h2 class="role-label">{{ role.label }}</h2>
@@ -190,6 +184,34 @@ function enterRole(route: string) {
 .role-icon .material-symbols-rounded {
   font-size: 26px;
   font-variation-settings: "FILL" 1;
+}
+
+.role-icon--principal {
+  background: #f5f3ff;
+  color: var(--cui-surface-hero-action);
+}
+
+[data-theme="dark"] .role-icon--principal {
+  background: var(--cui-brand-dark-variant);
+}
+
+.role-icon--teacher {
+  background: #ebf8ff;
+  color: var(--color-primary);
+}
+
+[data-theme="dark"] .role-icon--teacher {
+  background: var(--cui-surface-info-lighter);
+}
+
+.role-icon--student {
+  background: #f0fdfa;
+  color: #0d9488;
+}
+
+[data-theme="dark"] .role-icon--student {
+  background: var(--cui-surface-success-lighter);
+  color: var(--cui-text-success-large);
 }
 
 .role-label {
