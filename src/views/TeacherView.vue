@@ -83,19 +83,31 @@ function denyRequest(req: AbsenceRequest) {
 }
 
 // --- Row actions ---
-// Both go in the overflow menu (quick: false) so the row always shows a
-// persistent "⋮" — the kebab only renders when there's an overflow item.
+// Plain overflow items (quick: false) so CuiRowAction's kebab always
+// renders and its dropdown lists Approve/Deny exactly once — CuiRowAction
+// would otherwise merge a "quick" copy into that same dropdown with no
+// visual separation, showing every action twice. The hover-revealed
+// icon pair is hand-rolled in the template instead (see
+// .row-actions-cluster), calling this same handler directly.
 function studentRequestActions(req: AbsenceRequest): RowActionItem[] {
   if (req.status !== "pending") return [];
   return [
     { id: "approve", icon: "check", label: "Approve", quick: false },
-    { id: "deny", icon: "close", label: "Deny", quick: false },
+    { id: "deny", icon: "delete", label: "Deny", quick: false },
   ];
 }
 
 function onStudentRequestAction(req: AbsenceRequest, actionId: string) {
   if (actionId === "approve") approveRequest(req);
   else if (actionId === "deny") denyRequest(req);
+}
+
+const hoveredStudentRequestId = ref<string | null>(null);
+function onStudentRequestRowEnter(e: { data: AbsenceRequest }) {
+  hoveredStudentRequestId.value = e.data.id;
+}
+function onStudentRequestRowLeave() {
+  hoveredStudentRequestId.value = null;
 }
 
 // =====================
@@ -321,7 +333,14 @@ function threadMessages(threadId: string) {
       </div>
 
       <div class="table-card">
-        <CuiDataTable :value="studentRequests" :rows="10" striped-rows>
+        <CuiDataTable
+          :value="studentRequests"
+          :rows="10"
+          striped-rows
+          row-hover
+          @row-mouse-enter="onStudentRequestRowEnter"
+          @row-mouse-leave="onStudentRequestRowLeave"
+        >
           <Column header="Student" sortable field="requesterName">
             <template #body="{ data }">
               <div class="cell-person">
@@ -351,12 +370,35 @@ function threadMessages(threadId: string) {
           <Column header="Actions">
             <template #body="{ data }">
               <div class="row-actions-cell">
-                <CuiRowAction
+                <div
                   v-if="studentRequestActions(data).length > 0"
-                  :actions="studentRequestActions(data)"
-                  :aria-label="`Actions for ${data.requesterName}'s request`"
-                  @action="onStudentRequestAction(data, $event.id)"
-                />
+                  class="row-actions-cluster"
+                  :class="{ 'is-revealed': hoveredStudentRequestId === data.id }"
+                >
+                  <button
+                    type="button"
+                    class="row-actions-quick-icon"
+                    aria-label="Approve"
+                    @click="onStudentRequestAction(data, 'approve')"
+                  >
+                    <span class="material-symbols-rounded" style="font-size: 16px">check</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="row-actions-quick-icon"
+                    aria-label="Deny"
+                    @click="onStudentRequestAction(data, 'deny')"
+                  >
+                    <span class="material-symbols-rounded" style="font-size: 16px">delete</span>
+                  </button>
+                  <span class="row-actions-divider" />
+                  <CuiRowAction
+                    :actions="studentRequestActions(data)"
+                    collapsed
+                    :aria-label="`Actions for ${data.requesterName}'s request`"
+                    @action="onStudentRequestAction(data, $event.id)"
+                  />
+                </div>
                 <span v-else class="cell-secondary">—</span>
               </div>
             </template>
@@ -689,6 +731,67 @@ function threadMessages(threadId: string) {
   min-height: 28px;
   display: flex;
   align-items: center;
+}
+
+/* Bare kebab at rest; hovering the row reveals a shared pill surface
+   behind the kebab plus the quick approve/deny icons beside it. */
+.row-actions-cluster {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0.25rem 0.375rem;
+  border-radius: var(--ds-radius-xl);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.row-actions-cluster.is-revealed {
+  background: var(--cui-surface-default-white);
+  border-color: var(--cui-border-neutral-subtle);
+  box-shadow: var(--ds-shadow-md);
+}
+
+.row-actions-quick-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--cui-text-subtitle-caption);
+  transition: width 0.18s ease, opacity 0.18s ease;
+}
+
+.row-actions-cluster.is-revealed .row-actions-quick-icon {
+  width: 1.5rem;
+  opacity: 1;
+}
+
+.row-actions-quick-icon:hover {
+  color: var(--cui-text-header-body);
+}
+
+.row-actions-divider {
+  width: 1px;
+  height: 1.25rem;
+  background-color: var(--cui-border-neutral);
+  opacity: 0;
+  margin: 0 2px;
+  transition: opacity 0.18s ease;
+}
+
+.row-actions-cluster.is-revealed .row-actions-divider {
+  opacity: 1;
 }
 
 /* My Absences cards */
